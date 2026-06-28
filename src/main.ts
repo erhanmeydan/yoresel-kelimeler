@@ -24,7 +24,11 @@ async function render(): Promise<void> {
     const { renderContributePage } = await import('./pages/ContributePage');
     await renderContributePage(slot);
   }
-  // profile / moderation ileride eklenecek
+  if (page === 'moderation') {
+    const { renderModerationPage } = await import('./pages/ModerationPage');
+    await renderModerationPage(slot);
+  }
+  // profile ileride eklenecek
 }
 
 window.addEventListener('hashchange', () => void render());

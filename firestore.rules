@@ -1,8 +1,82 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isModerator() {
+      return isSignedIn() && getUserRole() in ['moderator', 'admin'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'admin';
+    }
+
+    function isValidEntry(data) {
+      return data.word is string
+          && data.word.size() > 0 && data.word.size() <= 100
+          && data.meaning is string
+          && data.meaning.size() > 0 && data.meaning.size() <= 500
+          && data.exampleSentence is string
+          && data.exampleSentence.size() <= 500
+          && data.type in ['kelime', 'deyim', 'atasözü']
+          && data.regionId is string
+          && data.status in ['active', 'removed'];
+    }
+
+    match /regions/{regionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if isOwner(uid)
+                     && request.resource.data.role == 'user';
+      allow update: if isOwner(uid)
+                     && request.resource.data.role == resource.data.role
+                     || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /entries/{entryId} {
+      allow read: if resource.data.status == 'active'
+                   || (isSignedIn() && resource.data.contributorId == request.auth.uid)
+                   || isModerator();
+      allow create: if isSignedIn()
+                     && isValidEntry(request.resource.data)
+                     && request.resource.data.contributorId == request.auth.uid
+                     && request.resource.data.status == 'active';
+      allow update: if isSignedIn() &&
+                     (
+                       (resource.data.contributorId == request.auth.uid
+                        && isValidEntry(request.resource.data)
+                        && request.resource.data.contributorId == resource.data.contributorId)
+                       || isModerator()
+                     );
+      allow delete: if isModerator();
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+                     && request.resource.data.reporterId == request.auth.uid;
+      allow read: if isModerator();
+      allow update, delete: if isModerator();
+    }
+
+    match /moderationLog/{logId} {
+      allow read: if isModerator();
+      allow write: if false;
     }
   }
 }

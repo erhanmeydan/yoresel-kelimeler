@@ -20,7 +20,11 @@ async function render(): Promise<void> {
   const slot = document.getElementById('page-slot')!;
   const page = parseRoute();
   if (page === 'home') await renderHomePage(slot);
-  // contribute / profile / moderation ileride eklenecek
+  if (page === 'contribute') {
+    const { renderContributePage } = await import('./pages/ContributePage');
+    await renderContributePage(slot);
+  }
+  // profile / moderation ileride eklenecek
 }
 
 window.addEventListener('hashchange', () => void render());

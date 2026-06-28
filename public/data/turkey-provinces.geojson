@@ -1,0 +1,39 @@
+{
+  "_comment": "PLACEHOLDER GeoJSON file. This is NOT real province data. Replace with actual 81-province FeatureCollection before running the seed script. Original source URL in brief (https://raw.githubusercontent.com/ozdemirburak/il-iller/master/turkey.json) returned 404 at task execution time (2026-06-28). The repo could not be located on GitHub. Replace this file with a real source before running `npm run seed:regions`. Each Feature should have: properties.name (Turkish province name), properties.plate (1-81 plate code), properties.parentRegion (e.g. Akdeniz, Ege, Marmara), and geometry of type Polygon or MultiPolygon.",
+  "type": "FeatureCollection",
+  "name": "turkey-provinces",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Adana",
+        "plate": "01",
+        "parentRegion": "Akdeniz"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [35.2825, 36.9625],
+            [35.4520, 37.0520],
+            [35.7920, 37.1050],
+            [36.0520, 37.1820],
+            [36.3920, 37.0820],
+            [36.5220, 36.9020],
+            [36.4120, 36.6820],
+            [36.1120, 36.5820],
+            [35.7820, 36.6520],
+            [35.4520, 36.7920],
+            [35.2825, 36.9625]
+          ]
+        ]
+      }
+    }
+  ]
+}

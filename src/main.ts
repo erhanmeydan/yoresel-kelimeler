@@ -1,3 +1,5 @@
+import './styles/main.css';
+
 console.log('Yöresel Kelimeler - bootstrap başladı');
 const app = document.querySelector<HTMLDivElement>('#app');
 if (app) {

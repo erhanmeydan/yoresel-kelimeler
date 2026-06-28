@@ -1,7 +1,27 @@
 import './styles/main.css';
+import { renderHeader } from './components/Header';
 import { renderHomePage } from './pages/HomePage';
 
-const app = document.querySelector<HTMLDivElement>('#app');
-if (app) {
-  void renderHomePage(app);
+type Page = 'home' | 'contribute' | 'profile' | 'moderation';
+
+function parseRoute(): Page {
+  const hash = window.location.hash.replace('#/', '').split('/')[0] ?? 'home';
+  if (hash === 'contribute' || hash === 'profile' || hash === 'moderation') return hash;
+  return 'home';
 }
+
+async function render(): Promise<void> {
+  const app = document.querySelector<HTMLDivElement>('#app');
+  if (!app) return;
+
+  app.innerHTML = '<div id="header-slot"></div><div id="page-slot"></div>';
+  renderHeader(document.getElementById('header-slot')!);
+
+  const slot = document.getElementById('page-slot')!;
+  const page = parseRoute();
+  if (page === 'home') await renderHomePage(slot);
+  // contribute / profile / moderation ileride eklenecek
+}
+
+window.addEventListener('hashchange', () => void render());
+void render();

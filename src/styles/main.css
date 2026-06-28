@@ -37,6 +37,8 @@ button {
   border: none;
   background: none;
   color: inherit;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 button.btn-primary {

@@ -1,4 +1,4 @@
-.custom-marker { background: transparent; border: none; }
+.custom-marker { background: transparent; border: none; min-width: 0; min-height: 0; padding: 0; }
 .marker-dot {
   width: 16px;
   height: 16px;

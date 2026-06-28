@@ -1,7 +1,6 @@
 import { doc, type Firestore } from 'firebase/firestore';
 import { COLLECTIONS } from '../config/constants';
-import { httpsCallable } from 'firebase/functions';
-import { getFunctions } from 'firebase/app';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 
 export async function removeEntryRemote(
   db: Firestore, entryId: string, reason: string,

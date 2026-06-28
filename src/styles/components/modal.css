@@ -1,0 +1,23 @@
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(43, 33, 24, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  max-width: 420px; width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-5); border-bottom: 1px solid var(--color-border); }
+.modal-close { font-size: 1.5rem; color: var(--color-muted); padding: var(--space-2); }
+.modal-body { padding: var(--space-5); }
+.auth-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
+.auth-tab { padding: var(--space-2) var(--space-4); border-radius: var(--radius); color: var(--color-muted); }
+.auth-tab.active { background: var(--color-bg); color: var(--color-text); font-weight: 500; }
+.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.auth-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.auth-field span { font-size: 0.875rem; color: var(--color-muted); }
+.auth-error { color: var(--color-danger); font-size: 0.875rem; }

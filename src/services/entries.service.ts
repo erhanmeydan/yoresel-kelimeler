@@ -93,3 +93,24 @@ export async function incrementLike(db: Firestore, entryId: string, delta: 1 | -
     return { ok: false, error: { code: 'entries/like-failed', message: 'Beğeni işlemi başarısız.' } };
   }
 }
+
+export async function searchEntries(
+  db: Firestore, query_text: string, max = 30,
+): Promise<ServiceResult<Entry[]>> {
+  const tokens = query_text.toLocaleLowerCase('tr-TR').split(/\s+/).filter((t) => t.length >= 2);
+  if (tokens.length === 0) return { ok: true, data: [] };
+
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.ENTRIES),
+      where('status', '==', 'active'),
+      where('searchTokens', 'array-contains-any', tokens.slice(0, 10)),
+      orderBy('createdAt', 'desc'),
+      limit(max),
+    );
+    const snap = await getDocs(q);
+    return { ok: true, data: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Entry) };
+  } catch {
+    return { ok: false, error: { code: 'entries/search-failed', message: 'Arama başarısız.' } };
+  }
+}

@@ -1,1 +1,1 @@
-export {};
+export { onEntryCreate } from './onEntryCreate';

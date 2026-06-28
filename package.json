@@ -11,6 +11,7 @@
     "deploy": "npm run build && firebase deploy",
     "seed": "tsx scripts/seed.ts",
     "seed:regions": "tsx scripts/seed.ts",
+    "seed:entries": "tsx scripts/seed-entries.ts",
     "test:rules": "firebase emulators:exec --only firestore 'vitest run tests/rules'"
   },
   "dependencies": {

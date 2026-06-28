@@ -4,6 +4,7 @@ import { listEntriesByRegion } from '../services/entries.service';
 import { store } from '../store/store';
 import { MapView } from '../components/MapView';
 import { renderEntryCard } from '../components/EntryCard';
+import { renderSearchBar } from '../components/SearchBar';
 import type { Region, Entry } from '../types/models';
 
 export async function renderHomePage(container: HTMLElement): Promise<void> {
@@ -17,6 +18,19 @@ export async function renderHomePage(container: HTMLElement): Promise<void> {
       </aside>
     </main>
   `;
+
+  container.querySelector<HTMLElement>('.entries-panel')!.insertAdjacentHTML(
+    'afterbegin',
+    '<div id="search-slot" style="margin-bottom: var(--space-4)"></div>'
+  );
+  renderSearchBar(
+    document.getElementById('search-slot')!,
+    (entries) => {
+      if (entries.length === 0) {
+        // boş state veya bölge listesi gösterilebilir
+      }
+    }
+  );
 
   const mapEl = container.querySelector<HTMLDivElement>('#map')!;
   const listEl = container.querySelector<HTMLDivElement>('#entries-list')!;

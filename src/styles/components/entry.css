@@ -1,0 +1,18 @@
+.entry-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.entry-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.entry-card header { display: flex; justify-content: space-between; align-items: baseline; }
+.entry-type { font-size: 0.75rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.entry-word { color: var(--color-primary); }
+.entry-meaning { color: var(--color-text); }
+.entry-card footer { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--color-muted); }

@@ -1,0 +1,16 @@
+.home-page { display: grid; grid-template-columns: 1fr 400px; flex: 1; }
+.map-section { position: relative; }
+.map { height: 100%; width: 100%; }
+.entries-panel {
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+.entries-panel h2 { margin-bottom: var(--space-2); }
+.entries-panel p { color: var(--color-muted); margin-bottom: var(--space-4); }
+.entries-list { display: flex; flex-direction: column; gap: var(--space-3); }
+@media (max-width: 768px) {
+  .home-page { grid-template-columns: 1fr; grid-template-rows: 50vh 1fr; }
+  .entries-panel { border-left: none; border-top: 1px solid var(--color-border); }
+}

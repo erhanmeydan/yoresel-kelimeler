@@ -10,6 +10,7 @@
     "emulators": "firebase emulators:start",
     "deploy": "npm run build && firebase deploy",
     "seed": "tsx scripts/seed.ts",
+    "seed:regions": "tsx scripts/seed.ts",
     "test:rules": "firebase emulators:exec --only firestore 'vitest run tests/rules'"
   },
   "dependencies": {
@@ -22,6 +23,8 @@
     "vite": "^5.4.0",
     "vitest": "^2.1.0",
     "tsx": "^4.19.0",
-    "@firebase/rules-unit-testing": "^3.0.0"
+    "@firebase/rules-unit-testing": "^3.0.0",
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.4.0"
   }
 }

@@ -1,6 +1,7 @@
 import {
   collection, query, where, orderBy, limit, getDocs,
-  type Firestore,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment,
+  type Firestore, type DocumentData,
 } from 'firebase/firestore';
 import { COLLECTIONS } from '../config/constants';
 import type { Entry, ServiceResult } from '../types/models';
@@ -37,5 +38,58 @@ export async function listTrendingEntries(
     return { ok: true, data: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Entry) };
   } catch {
     return { ok: false, error: { code: 'entries/trending-failed', message: 'Trend kayıtlar yüklenemedi.' } };
+  }
+}
+
+export async function createEntry(
+  db: Firestore, input: {
+    word: string; meaning: string; exampleSentence: string;
+    type: Entry['type']; regionId: string; contributorId: string; contributorName: string;
+  },
+): Promise<ServiceResult<string>> {
+  try {
+    const ref = await addDoc(collection(db, COLLECTIONS.ENTRIES), {
+      ...input,
+      status: 'active',
+      removedReason: null,
+      removedBy: null,
+      removedAt: null,
+      likeCount: 0,
+      searchTokens: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    } satisfies DocumentData);
+    return { ok: true, data: ref.id };
+  } catch (err) {
+    return { ok: false, error: { code: 'entries/create-failed', message: 'Kayıt oluşturulamadı.', detail: String(err) } };
+  }
+}
+
+export async function updateOwnEntry(
+  db: Firestore, entryId: string, patch: Partial<Pick<Entry, 'word' | 'meaning' | 'exampleSentence' | 'type'>>,
+): Promise<ServiceResult<null>> {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.ENTRIES, entryId), { ...patch, updatedAt: serverTimestamp() });
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: { code: 'entries/update-failed', message: 'Güncellenemedi.' } };
+  }
+}
+
+export async function deleteOwnEntry(db: Firestore, entryId: string): Promise<ServiceResult<null>> {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.ENTRIES, entryId));
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: { code: 'entries/delete-failed', message: 'Silinemedi.' } };
+  }
+}
+
+export async function incrementLike(db: Firestore, entryId: string, delta: 1 | -1): Promise<ServiceResult<null>> {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.ENTRIES, entryId), { likeCount: increment(delta) });
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: { code: 'entries/like-failed', message: 'Beğeni işlemi başarısız.' } };
   }
 }

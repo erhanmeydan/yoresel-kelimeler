@@ -447,7 +447,7 @@ Scheduled function 03:00'te çalışır. İlk deploy sonrası:
 - **Seçenek A:** Manuel tetikle (Firebase Console → Functions → updateWeeklyStats → Test)
 - **Seçenek B:** Bekle, frontend deploy edilene kadar boş state gösterilir
 
-**Karar:** PR 1 merge → 5 dakika bekle → manuel tetikle (boş snapshot olsun, frontend boş state gösterir) → PR 2 merge → canlıda data gelir.
+**Karar:** PR 1 (backend) merge → fonksiyon deploy edilir → manuel tetikle (boş snapshot olsun, frontend boş state gösterir) → PR 2 (frontend) merge → canlıda data gelir.
 
 ### Rollback
 

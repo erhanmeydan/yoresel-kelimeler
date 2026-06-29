@@ -88,11 +88,10 @@ export async function renderEntryForm(
 
       <label class="form-field">
         <span>İl *</span>
-        <select name="regionId" required ${isEdit ? 'disabled' : ''}>
-          ${isEdit ? '' : '<option value="">Seçin...</option>'}
+        <select name="regionId" required>
           ${regions.map((r: Region) => `<option value="${r.id}">${r.name} (${r.parentRegion})</option>`).join('')}
         </select>
-        ${isEdit ? '<small class="hint">İl değiştirilemez.</small>' : ''}
+        ${isEdit ? '<small class="hint">İl değiştirilebilir.</small>' : ''}
       </label>
 
       <p class="form-error" role="alert" hidden></p>
@@ -155,6 +154,7 @@ export async function renderEntryForm(
         word: input.word,
         meaning: input.meaning,
         exampleSentence: input.exampleSentence,
+        regionId: input.regionId,
       });
       if (result.ok) {
         errorEl.classList.add('success');

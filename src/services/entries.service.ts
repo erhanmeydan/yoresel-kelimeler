@@ -149,7 +149,7 @@ export async function createEntry(
 }
 
 export async function updateOwnEntry(
-  db: Firestore, entryId: string, patch: Partial<Pick<Entry, 'word' | 'meaning' | 'exampleSentence' | 'type'>>,
+  db: Firestore, entryId: string, patch: Partial<Pick<Entry, 'word' | 'meaning' | 'exampleSentence' | 'type' | 'regionId'>>,
 ): Promise<ServiceResult<null>> {
   try {
     await updateDoc(doc(db, COLLECTIONS.ENTRIES, entryId), { ...patch, updatedAt: serverTimestamp() });

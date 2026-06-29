@@ -163,6 +163,29 @@ export async function renderHomePage(container: HTMLElement): Promise<void> {
   // Son Eklenenler section
   const recentSlot = container.querySelector<HTMLElement>('#recent-slot')!;
   void renderRecentSection(recentSlot, regionNameById);
+
+  // Top Regions Leaderboard section
+  const topRegionsSlot = document.createElement('section');
+  topRegionsSlot.className = 'top-regions-section';
+  topRegionsSlot.id = 'top-regions-slot';
+  recentSlot.after(topRegionsSlot);
+  void renderTopRegionsSection(topRegionsSlot, regionNameById);
+
+  // Click delegation: top-region button → handleRegionClick + smooth scroll
+  document.addEventListener('top-region-click', (e) => {
+    const detail = (e as CustomEvent<{ regionId: string }>).detail;
+    const region = regions.find((r) => r.id === detail.regionId);
+    if (!region) return;
+    void handleRegionClick(region);
+    const mapSection = container.querySelector<HTMLElement>('.map-section');
+    if (mapSection) {
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      mapSection.scrollIntoView({
+        behavior: prefersReduced ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }
+  });
 }
 
 async function renderRecentSection(

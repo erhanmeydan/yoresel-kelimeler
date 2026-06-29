@@ -366,3 +366,182 @@
   font-size: var(--fs-xs);
   color: var(--color-muted);
 }
+
+/* ------------------------------------------------------------------
+   Top Regions Leaderboard — editorial ranking below recent entries
+   ------------------------------------------------------------------ */
+
+.top-regions-section {
+  padding: var(--space-8) var(--space-5);
+  max-width: var(--max-content-width);
+  margin-inline: auto;
+  width: 100%;
+  border-top: 1px solid var(--color-divider);
+}
+
+@media (min-width: 768px) {
+  .top-regions-section {
+    padding-inline: var(--space-6);
+  }
+}
+
+.top-regions-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.top-regions-subheading {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  margin-bottom: var(--space-6);
+}
+
+.top-regions-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-divider);
+}
+
+.top-region-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border: none;
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  transition: background var(--duration) var(--ease-out);
+}
+
+.top-region-row:hover,
+.top-region-row:focus-visible {
+  background: oklch(0.97 0.005 145);
+}
+
+.top-region-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.top-region-rank {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.top-region-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.top-region-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.top-region-sample {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-region-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.top-region-bar {
+  width: 120px;
+  height: 4px;
+  background: var(--color-divider);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.top-region-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 600ms var(--ease-out);
+}
+
+.top-region-count {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--fs-base);
+  color: var(--color-text-soft);
+  font-variant-numeric: tabular-nums;
+  min-width: 5rem;
+  text-align: right;
+}
+
+/* Empty state */
+.top-regions-empty {
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+}
+
+.top-regions-empty p {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  color: var(--color-text-soft);
+  margin-bottom: var(--space-5);
+}
+
+/* Mobile: bar + sample gizle */
+@media (max-width: 767px) {
+  .top-region-row {
+    grid-template-columns: 2.5rem 1fr auto;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .top-region-bar {
+    display: none;
+  }
+
+  .top-region-sample {
+    display: none;
+  }
+
+  .top-region-stat {
+    gap: 0;
+  }
+
+  .top-region-count {
+    min-width: 3.5rem;
+  }
+}
+
+/* Reduced motion: bar animasyonu devre dışı */
+@media (prefers-reduced-motion: reduce) {
+  .top-region-bar-fill {
+    transition: none;
+  }
+}

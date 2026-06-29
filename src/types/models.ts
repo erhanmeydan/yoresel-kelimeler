@@ -15,6 +15,16 @@ export interface Region {
   createdAt: Timestamp;
 }
 
+export interface RegionWeeklyStat {
+  regionId: string;
+  regionName: string;
+  entryCount: number;
+  sampleEntryId: string;
+  sampleWord: string;
+  sampleMeaning: string;
+  updatedAt: Timestamp;
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string;

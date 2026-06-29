@@ -67,7 +67,7 @@
       ]
     },
     {
-      "collectionGroup": "regionStats/weekly",
+      "collectionGroup": "regionStats",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "entryCount", "order": "DESCENDING" }

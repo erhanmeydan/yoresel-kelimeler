@@ -1,8 +1,97 @@
-.page-container { max-width: 640px; margin: var(--space-6) auto; padding: 0 var(--space-5); }
-.entry-form { background: var(--color-surface); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: var(--space-4); }
-.entry-form h2 { margin-bottom: var(--space-2); }
-.form-field { display: flex; flex-direction: column; gap: var(--space-1); }
-.form-field span { font-size: 0.875rem; color: var(--color-muted); font-weight: 500; }
-.char-counter { font-size: 0.75rem; color: var(--color-muted); align-self: flex-end; }
-.form-error { color: var(--color-danger); font-size: 0.875rem; }
-.form-error.success { color: var(--color-success); }
+/* ==========================================================================
+   Form — Contribute / Profile pages
+   ========================================================================== */
+
+.page-container {
+  max-width: 680px;
+  margin: var(--space-7) auto;
+  padding: 0 var(--space-5);
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .page-container {
+    padding: 0 var(--space-6);
+  }
+}
+
+.page-header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.page-header h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-3xl);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin-bottom: var(--space-3);
+}
+
+.page-header .lead {
+  font-size: var(--fs-lg);
+  color: var(--color-text-soft);
+  max-width: 56ch;
+}
+
+.entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.entry-form h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-field label,
+.form-field > span {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: var(--tracking-snug);
+}
+
+.form-field .hint {
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.char-counter {
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+  align-self: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-error {
+  color: var(--color-danger);
+  font-size: var(--fs-sm);
+  padding: var(--space-3);
+  background: oklch(0.52 0.18 25 / 0.06);
+  border-radius: var(--radius);
+}
+
+.form-error.success {
+  color: var(--color-success);
+  background: oklch(0.55 0.13 150 / 0.08);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-3);
+}

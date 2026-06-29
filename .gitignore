@@ -38,3 +38,7 @@ coverage/
 # Functions
 functions/lib/
 functions/node_modules/
+
+# Service account credentials (NEVER commit)
+service-account.json
+*-firebase-adminsdk-*.json

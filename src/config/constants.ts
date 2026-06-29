@@ -4,6 +4,7 @@ export const COLLECTIONS = {
   ENTRIES: 'entries',
   REPORTS: 'reports',
   MODERATION_LOG: 'moderationLog',
+  COMMENTS: 'comments',
 } as const;
 
 export const TURKISH_PARENT_REGIONS = [
@@ -28,4 +29,7 @@ export const VALIDATION = {
   EXAMPLE_MAX: 500,
   REASON_MAX: 200,
   ENTRIES_PER_MINUTE: 5,
+  DISPLAY_NAME_MIN: 2,
+  DISPLAY_NAME_MAX: 40,
+  PASSWORD_MIN: 10,
 } as const;

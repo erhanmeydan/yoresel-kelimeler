@@ -25,8 +25,35 @@ export function validateEntry(input: {
 
 export function validateRegister(input: { email: string; password: string; displayName: string }): ValidationResult {
   const errors: ValidationError[] = [];
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) errors.push({ field: 'email', message: 'Geçersiz e-posta.' });
-  if (input.password.length < 6) errors.push({ field: 'password', message: 'Şifre en az 6 karakter.' });
-  if (input.displayName.trim().length < 2) errors.push({ field: 'displayName', message: 'Ad en az 2 karakter.' });
+
+  // Email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
+    errors.push({ field: 'email', message: 'Geçersiz e-posta.' });
+  }
+
+  // Password: stronger (10+ chars, mixed case, digit OR symbol)
+  if (input.password.length < VALIDATION.PASSWORD_MIN) {
+    errors.push({ field: 'password', message: `Şifre en az ${VALIDATION.PASSWORD_MIN} karakter.` });
+  } else if (
+    !/[A-ZÇĞİÖŞÜ]/.test(input.password) ||
+    !/[a-zçğıöşü]/.test(input.password) ||
+    !/[\d\W]/.test(input.password)
+  ) {
+    errors.push({ field: 'password', message: 'Şifre büyük/küçük harf ve rakam/işaret içermeli.' });
+  }
+
+  // Display name: trimmed length + max length + control char check
+  const trimmedName = input.displayName.trim();
+  if (trimmedName.length < VALIDATION.DISPLAY_NAME_MIN) {
+    errors.push({ field: 'displayName', message: `Ad en az ${VALIDATION.DISPLAY_NAME_MIN} karakter.` });
+  }
+  if (trimmedName.length > VALIDATION.DISPLAY_NAME_MAX) {
+    errors.push({ field: 'displayName', message: `Ad en fazla ${VALIDATION.DISPLAY_NAME_MAX} karakter.` });
+  }
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1F\x7F]/.test(trimmedName)) {
+    errors.push({ field: 'displayName', message: 'Ad geçersiz karakter içeriyor.' });
+  }
+
   return errors.length ? { ok: false, errors } : { ok: true };
 }

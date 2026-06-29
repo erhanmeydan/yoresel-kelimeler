@@ -29,6 +29,7 @@ export interface UserProfile {
 
 export interface Entry {
   id: string;
+  slug: string;
   word: string;
   type: EntryType;
   meaning: string;
@@ -66,9 +67,19 @@ export interface ModerationLog {
   createdAt: Timestamp;
 }
 
+export interface Comment {
+  id: string;
+  entryId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: Timestamp;
+}
+
 export interface AppError {
   code: string;
   message: string;
+  detail?: string;
 }
 
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: AppError };

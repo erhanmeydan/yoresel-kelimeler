@@ -1,23 +1,225 @@
-.modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(43, 33, 24, 0.5);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-  padding: var(--space-4);
+/* ==========================================================================
+   Auth Drawer — sağdan slide-in, harita bağlamı korunur
+   ========================================================================== */
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0.18 0.008 145 / 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: flex-end;
+  z-index: var(--z-modal-backdrop);
+  animation: drawer-backdrop-in var(--duration) var(--ease-out) both;
 }
-.modal {
+
+@keyframes drawer-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-drawer {
+  position: relative;
+  width: min(420px, 92vw);
+  height: 100dvh;
   background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  max-width: 420px; width: 100%;
-  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -16px 0 36px -4px oklch(0.18 0.008 145 / 0.18);
+  animation: drawer-in var(--duration-slow) var(--ease-out) both;
 }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-5); border-bottom: 1px solid var(--color-border); }
-.modal-close { font-size: 1.5rem; color: var(--color-muted); padding: var(--space-2); }
-.modal-body { padding: var(--space-5); }
-.auth-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
-.auth-tab { padding: var(--space-2) var(--space-4); border-radius: var(--radius); color: var(--color-muted); }
-.auth-tab.active { background: var(--color-bg); color: var(--color-text); font-weight: 500; }
-.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
-.auth-field { display: flex; flex-direction: column; gap: var(--space-1); }
-.auth-field span { font-size: 0.875rem; color: var(--color-muted); }
-.auth-error { color: var(--color-danger); font-size: 0.875rem; }
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-backdrop { animation: none; }
+  .auth-drawer { animation: none; }
+}
+
+.auth-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.auth-drawer-head .brand-mark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: italic;
+  font-size: var(--fs-xl);
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.auth-drawer-head .brand-mark::first-letter {
+  color: var(--color-primary);
+}
+
+.drawer-close {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--color-muted);
+  padding: var(--space-2);
+  min-height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration) var(--ease-out);
+}
+
+.drawer-close:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.auth-drawer-body {
+  padding: var(--space-6) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.drawer-lede {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  line-height: var(--lh-relaxed);
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.auth-field > span {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.auth-error {
+  color: var(--color-danger);
+  font-size: var(--fs-sm);
+  padding: var(--space-3);
+  background: oklch(0.52 0.18 25 / 0.06);
+  border-radius: var(--radius);
+  margin: 0;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease-out),
+    border-color var(--duration) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out);
+}
+
+.btn-google:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  border-color: var(--color-text-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-google:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-google:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.google-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-2) 0;
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.drawer-toggle {
+  margin-top: auto;
+  padding-top: var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  text-align: center;
+  border-top: 1px solid var(--color-divider);
+}
+
+.drawer-toggle > span {
+  display: block;
+}
+
+.drawer-toggle-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: var(--space-1);
+  color: var(--color-primary);
+  font-weight: 500;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.drawer-toggle-link:hover {
+  color: var(--color-primary-hover);
+}

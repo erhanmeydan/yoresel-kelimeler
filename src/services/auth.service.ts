@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider,
   signOut as fbSignOut, onAuthStateChanged, updateProfile,
   type User, type Auth,
 } from 'firebase/auth';
@@ -14,10 +15,34 @@ const errorMessages: Record<string, string> = {
   'auth/wrong-password': 'Hatalı şifre.',
   'auth/weak-password': 'Şifre en az 6 karakter olmalı.',
   'auth/too-many-requests': 'Çok fazla deneme. Lütfen sonra tekrar deneyin.',
+  'auth/popup-closed-by-user': 'Giriş penceresi kapatıldı.',
+  'auth/cancelled-popup-request': 'Giriş iptal edildi.',
+  'auth/account-exists-with-different-credential': 'Bu e-posta farklı bir yöntemle kayıtlı.',
 };
 
 function mapAuthError(code: string): string {
   return errorMessages[code] ?? 'Bir hata oluştu. Lütfen tekrar deneyin.';
+}
+
+async function ensureUserProfile(
+  db: Firestore, user: User, fallbackDisplayName = 'Kullanıcı',
+): Promise<void> {
+  const ref = doc(db, COLLECTIONS.USERS, user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return;
+
+  const profile = {
+    uid: user.uid,
+    displayName: user.displayName ?? fallbackDisplayName,
+    email: user.email ?? '',
+    role: 'user',
+    contributionCount: 0,
+    approvedCount: 0,
+    removedCount: 0,
+    createdAt: serverTimestamp(),
+    lastActiveAt: serverTimestamp(),
+  };
+  await setDoc(ref, profile);
 }
 
 export async function register(
@@ -50,6 +75,21 @@ export async function login(
 ): Promise<ServiceResult<User>> {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    return { ok: true, data: cred.user };
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? 'unknown';
+    return { ok: false, error: { code, message: mapAuthError(code) } };
+  }
+}
+
+export async function signInWithGoogle(
+  auth: Auth, db: Firestore,
+): Promise<ServiceResult<User>> {
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setDefaultLanguage('tr');
+    const cred = await signInWithPopup(auth, provider);
+    await ensureUserProfile(db, cred.user, cred.user.displayName ?? 'Kullanıcı');
     return { ok: true, data: cred.user };
   } catch (err) {
     const code = (err as { code?: string }).code ?? 'unknown';

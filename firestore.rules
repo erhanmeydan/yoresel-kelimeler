@@ -31,7 +31,44 @@ service cloud.firestore {
           && data.exampleSentence.size() <= 500
           && data.type in ['kelime', 'deyim', 'atasözü']
           && data.regionId is string
-          && data.status in ['active', 'removed'];
+          && data.status in ['active', 'removed']
+          && data.slug is string
+          && data.slug.size() > 0 && data.slug.size() <= 80
+          && data.slug.matches('^[a-z0-9-]+$');
+    }
+
+    // Fields that contributors are allowed to modify on their own entries
+    function isOwnerEditableFields(data) {
+      // Only these string fields, nothing else
+      return data.diff(resource.data).affectedKeys()
+          .hasOnly(['word', 'meaning', 'exampleSentence', 'type', 'updatedAt']);
+    }
+
+    // Immutable server-controlled fields must not change
+    function contributorIdImmutable(data) {
+      return request.resource.data.contributorId == resource.data.contributorId;
+    }
+
+    function contributorNameImmutable(data) {
+      return request.resource.data.contributorName == resource.data.contributorName;
+    }
+
+    function regionIdImmutable(data) {
+      return request.resource.data.regionId == resource.data.regionId;
+    }
+
+    function createdAtImmutable(data) {
+      return request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function likeCountImmutableForOwner(data) {
+      // Only moderators may change likeCount (via separate operations)
+      return request.resource.data.likeCount == resource.data.likeCount;
+    }
+
+    function searchTokensImmutableForOwner(data) {
+      // Only server-managed; users must not set searchTokens directly
+      return request.resource.data.searchTokens == resource.data.searchTokens;
     }
 
     match /regions/{regionId} {
@@ -42,10 +79,18 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if true;
       allow create: if isOwner(uid)
-                     && request.resource.data.role == 'user';
-      allow update: if isOwner(uid)
-                     && request.resource.data.role == resource.data.role
-                     || isAdmin();
+                     && request.resource.data.role == 'user'
+                     && request.resource.data.contributionCount == 0
+                     && request.resource.data.approvedCount == 0
+                     && request.resource.data.removedCount == 0;
+      // Owner can update only safe fields; role/counts can only change via admin/server
+      allow update: if isAdmin()
+                     || (isOwner(uid)
+                         && request.resource.data.role == resource.data.role
+                         && request.resource.data.uid == resource.data.uid
+                         && request.resource.data.createdAt == resource.data.createdAt
+                         && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['displayName', 'email', 'lastActiveAt']));
       allow delete: if isAdmin();
     }
 
@@ -56,27 +101,59 @@ service cloud.firestore {
       allow create: if isSignedIn()
                      && isValidEntry(request.resource.data)
                      && request.resource.data.contributorId == request.auth.uid
-                     && request.resource.data.status == 'active';
-      allow update: if isSignedIn() &&
-                     (
-                       (resource.data.contributorId == request.auth.uid
-                        && isValidEntry(request.resource.data)
-                        && request.resource.data.contributorId == resource.data.contributorId)
-                       || isModerator()
-                     );
+                     && request.resource.data.status == 'active'
+                     && request.resource.data.likeCount == 0
+                     && request.resource.data.contributorName is string
+                     && request.resource.data.contributorName.size() > 0
+                     && request.resource.data.contributorName.size() <= 80;
+      // Owner can edit only their own content fields; moderator can edit anything
+      allow update: if isModerator() ||
+                     (isSignedIn()
+                      && resource.data.contributorId == request.auth.uid
+                      && isOwnerEditableFields(request.resource.data)
+                      && contributorIdImmutable(request.resource.data)
+                      && contributorNameImmutable(request.resource.data)
+                      && regionIdImmutable(request.resource.data)
+                      && createdAtImmutable(request.resource.data)
+                      && likeCountImmutableForOwner(request.resource.data)
+                      && searchTokensImmutableForOwner(request.resource.data))
+                     // Any signed-in user can increment likeCount by exactly 1
+                     || (isSignedIn()
+                         && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['likeCount'])
+                         && request.resource.data.likeCount == resource.data.likeCount + 1);
       allow delete: if isModerator();
     }
 
     match /reports/{reportId} {
       allow create: if isSignedIn()
-                     && request.resource.data.reporterId == request.auth.uid;
-      allow read: if isModerator();
+                     && request.resource.data.reporterId == request.auth.uid
+                     && request.resource.data.reason is string
+                     && request.resource.data.reason.size() > 0
+                     && request.resource.data.reason.size() <= 200
+                     && request.resource.data.entryId is string;
+      allow read: if isModerator() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
       allow update, delete: if isModerator();
     }
 
     match /moderationLog/{logId} {
       allow read: if isModerator();
       allow write: if false;
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+                     && request.resource.data.authorId == request.auth.uid
+                     && request.resource.data.entryId is string
+                     && request.resource.data.authorName is string
+                     && request.resource.data.authorName.size() > 0
+                     && request.resource.data.authorName.size() <= 80
+                     && request.resource.data.text is string
+                     && request.resource.data.text.size() > 0
+                     && request.resource.data.text.size() <= 500;
+      allow update, delete: if isSignedIn()
+                            && resource.data.authorId == request.auth.uid;
     }
   }
 }

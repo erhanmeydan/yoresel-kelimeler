@@ -76,6 +76,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Top regions leaderboard — public read, admin/service write only
+    match /regionStats/{regionId} {
+      allow read: if true;
+      allow write: if false; // only Cloud Function (admin SDK) can write
+    }
+
     match /users/{uid} {
       allow read: if true;
       allow create: if isOwner(uid)

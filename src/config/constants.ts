@@ -5,6 +5,7 @@ export const COLLECTIONS = {
   REPORTS: 'reports',
   MODERATION_LOG: 'moderationLog',
   COMMENTS: 'comments',
+  REGION_STATS: 'regionStats',
 } as const;
 
 export const TURKISH_PARENT_REGIONS = [

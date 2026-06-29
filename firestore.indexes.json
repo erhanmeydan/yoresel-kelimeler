@@ -65,6 +65,13 @@
         { "fieldPath": "authorId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "regionStats/weekly",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "entryCount", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

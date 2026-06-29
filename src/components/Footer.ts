@@ -21,7 +21,7 @@ export function renderFooter(container: HTMLElement): void {
             <h4 class="site-footer-col-title">Topluluk</h4>
             <ul>
               <li><a href="/profile">Profilim</a></li>
-              <li><a href="https://github.com/voicescript-io/yoresel-kelimeler" target="_blank" rel="noopener">Kaynak Kodu</a></li>
+              <li><a href="https://github.com/erhanmeydan/yoresel-kelimeler" target="_blank" rel="noopener">Kaynak Kodu</a></li>
             </ul>
           </div>
           <div class="site-footer-col">

@@ -138,7 +138,7 @@ Issue template'inde "feature request" seç. Açık ve spesifik ol:
 
 ## 📞 İletişim
 
-- **Issues**: [GitHub Issues](https://github.com/voicescript-io/yoresel-kelimeler/issues)
+- **Issues**: [GitHub Issues](https://github.com/erhanmeydan/yoresel-kelimeler/issues)
 - **Discussions**: GitHub Discussions (henüz yok, ileride açılabilir)
 
 ## 🙏 Code of Conduct

@@ -113,7 +113,6 @@ service cloud.firestore {
                       && isOwnerEditableFields(request.resource.data)
                       && contributorIdImmutable(request.resource.data)
                       && contributorNameImmutable(request.resource.data)
-                      && regionIdImmutable(request.resource.data)
                       && createdAtImmutable(request.resource.data)
                       && likeCountImmutableForOwner(request.resource.data)
                       && searchTokensImmutableForOwner(request.resource.data))

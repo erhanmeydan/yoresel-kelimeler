@@ -19,13 +19,19 @@ export class MapView {
     for (const m of this.markers.values()) m.remove();
     this.markers.clear();
 
+    if (regions.length === 0) return;
+
+    const bounds = L.latLngBounds([]);
     for (const region of regions) {
       const [lat, lng] = [region.geoPoint.latitude, region.geoPoint.longitude];
       const marker = L.marker([lat, lng], { icon: createMarkerIcon() })
         .addTo(this.map)
         .on('click', () => this.callbacks.onRegionClick(region));
       this.markers.set(region.id, marker);
+      bounds.extend([lat, lng]);
     }
+
+    this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
   }
 
   highlightRegion(regionId: string | null): void {

@@ -6,7 +6,11 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "lib"
+    "outDir": "lib",
+    "rootDirs": ["src", "../src/utils"],
+    "paths": {
+      "@shared/*": ["../src/utils/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../src/utils/searchTokens.ts"]
 }

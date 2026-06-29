@@ -1,27 +1,63 @@
 import { db, auth } from '../config/firebase';
-import { createEntry } from '../services/entries.service';
+import { createEntry, getEntry, updateOwnEntry, listAllSlugs } from '../services/entries.service';
 import { listRegions } from '../services/regions.service';
 import { validateEntry } from '../utils/validation';
 import { sanitizeText } from '../utils/sanitize';
-import type { EntryType, Region } from '../types/models';
+import { generateUniqueSlug } from '../utils/slug';
+import type { EntryType, Region, Entry } from '../types/models';
 
-export async function renderEntryForm(container: HTMLElement): Promise<void> {
+export interface EntryFormOptions {
+  entryId?: string;
+}
+
+export async function renderEntryForm(
+  container: HTMLElement,
+  options: EntryFormOptions = {},
+): Promise<void> {
   const user = auth.currentUser;
   if (!user) {
     container.innerHTML = '<p>Katkıda bulunmak için giriş yapmalısınız.</p>';
     return;
   }
 
-  const regionsResult = await listRegions(db);
+  const [regionsResult, existingResult] = await Promise.all([
+    listRegions(db),
+    options.entryId ? getEntry(db, options.entryId) : Promise.resolve(null),
+  ]);
+
   if (!regionsResult.ok) {
-    container.innerHTML = `<p class="error">${regionsResult.error.message}</p>`;
+    container.replaceChildren();
+    const errP = document.createElement('p');
+    errP.className = 'error';
+    errP.textContent = regionsResult.error.message;
+    container.appendChild(errP);
     return;
   }
   const regions = regionsResult.data;
+  const existing: Entry | null = (existingResult && existingResult.ok) ? existingResult.data : null;
+
+  if (options.entryId && !existing) {
+    container.replaceChildren();
+    const errP = document.createElement('p');
+    errP.className = 'error';
+    errP.textContent = 'Kayıt bulunamadı veya düzenleme yetkiniz yok.';
+    container.appendChild(errP);
+    return;
+  }
+
+  const isEdit = existing !== null;
 
   container.innerHTML = `
+    <header class="page-header">
+      <h1>${isEdit ? 'Kaydı Düzenle' : 'Yeni Sözcük Ekle'}</h1>
+      <p class="lead">
+        ${isEdit
+          ? 'Mevcut kaydı güncelleyin. Değişiklikler hemen yayına alınır.'
+          : 'Yörenizden bir kelime, deyim ya da atasözü ekleyin. Eklediğiniz her kayıt, kültürel arşive kalıcı olarak katılır.'}
+      </p>
+    </header>
     <form class="entry-form" novalidate>
-      <h2>Yeni Kelime / Deyim Ekle</h2>
+      <h2>Sözcük Bilgileri</h2>
 
       <label class="form-field">
         <span>Tür *</span>
@@ -53,15 +89,32 @@ export async function renderEntryForm(container: HTMLElement): Promise<void> {
       <label class="form-field">
         <span>İl *</span>
         <select name="regionId" required>
-          <option value="">Seçin...</option>
           ${regions.map((r: Region) => `<option value="${r.id}">${r.name} (${r.parentRegion})</option>`).join('')}
         </select>
+        ${isEdit ? '<small class="hint">İl değiştirilebilir.</small>' : ''}
       </label>
 
       <p class="form-error" role="alert" hidden></p>
-      <button type="submit" class="btn-primary">Gönder</button>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">${isEdit ? 'Kaydet' : 'Gönder'}</button>
+        ${isEdit
+          ? '<a class="btn-link" href="/profile"><span class="arrow">←</span> Profile dön</a>'
+          : '<a class="btn-link" href="/"><span class="arrow">←</span> Haritaya dön</a>'}
+      </div>
     </form>
   `;
+
+  // Pre-fill on edit
+  if (isEdit && existing) {
+    const form = container.querySelector<HTMLFormElement>('.entry-form')!;
+    form.querySelector<HTMLSelectElement>('select[name="type"]')!.value = existing.type;
+    (form.querySelector<HTMLInputElement>('input[name="word"]')! as HTMLInputElement).value = existing.word;
+    (form.querySelector<HTMLTextAreaElement>('textarea[name="meaning"]')! as HTMLTextAreaElement).value = existing.meaning;
+    (form.querySelector<HTMLTextAreaElement>('textarea[name="exampleSentence"]')! as HTMLTextAreaElement).value = existing.exampleSentence ?? '';
+    form.querySelector<HTMLSelectElement>('select[name="regionId"]')!.value = existing.regionId;
+    // Update char counters after pre-fill
+    updateCharCounters(form);
+  }
 
   const form = container.querySelector<HTMLFormElement>('.entry-form')!;
   const errorEl = container.querySelector<HTMLParagraphElement>('.form-error')!;
@@ -95,21 +148,48 @@ export async function renderEntryForm(container: HTMLElement): Promise<void> {
       return;
     }
 
-    const result = await createEntry(db, {
-      ...input,
-      contributorId: user.uid,
-      contributorName: user.displayName ?? user.email ?? 'Anonim',
-    });
-
-    if (result.ok) {
-      form.reset();
-      errorEl.classList.add('success');
-      errorEl.textContent = '✓ Kayıt eklendi! Haritadan görebilirsiniz.';
-      errorEl.hidden = false;
+    if (isEdit && existing) {
+      const result = await updateOwnEntry(db, existing.id, {
+        type: input.type,
+        word: input.word,
+        meaning: input.meaning,
+        exampleSentence: input.exampleSentence,
+        regionId: input.regionId,
+      });
+      if (result.ok) {
+        errorEl.classList.add('success');
+        errorEl.textContent = '✓ Kayıt güncellendi!';
+        errorEl.hidden = false;
+      } else {
+        errorEl.textContent = result.error.message;
+        errorEl.hidden = false;
+      }
     } else {
-      errorEl.textContent = result.error.message;
-      errorEl.hidden = false;
+      const existingSlugs = await listAllSlugs(db);
+      const slug = generateUniqueSlug(input.word, existingSlugs);
+      const result = await createEntry(db, {
+        ...input,
+        slug,
+        contributorId: user.uid,
+        contributorName: user.displayName ?? user.email ?? 'Anonim',
+      });
+      if (result.ok) {
+        form.reset();
+        errorEl.classList.add('success');
+        errorEl.textContent = '✓ Kayıt eklendi! Haritadan görebilirsiniz.';
+        errorEl.hidden = false;
+      } else {
+        errorEl.textContent = result.error.message;
+        errorEl.hidden = false;
+      }
     }
     submitBtn.disabled = false;
+  });
+}
+
+function updateCharCounters(form: HTMLFormElement): void {
+  form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[maxlength]').forEach((input) => {
+    const counter = input.parentElement!.querySelector('.char-counter')!;
+    counter.textContent = `${input.value.length} / ${input.maxLength}`;
   });
 }

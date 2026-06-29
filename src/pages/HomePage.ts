@@ -1,34 +1,99 @@
 import { db } from '../config/firebase';
 import { listRegions } from '../services/regions.service';
-import { listEntriesByRegion } from '../services/entries.service';
+import { listEntriesByRegion, listRecentEntries } from '../services/entries.service';
 import { store } from '../store/store';
 import { MapView } from '../components/MapView';
 import { renderEntryCard } from '../components/EntryCard';
 import { renderSearchBar } from '../components/SearchBar';
+import { ENTRY_TYPE_LABELS } from '../config/constants';
 import type { Region, Entry } from '../types/models';
+
+function renderHero(regionCount: number): string {
+  return `
+    <section class="hero" aria-label="Proje tanıtımı">
+      <div class="hero-inner">
+        <div>
+          <h1 class="hero-title">
+            Türkiye'nin <em>dili</em>, haritada.
+          </h1>
+          <p class="hero-lede">
+            81 ilin yöresel kelimelerini, deyimlerini ve atasözlerini topluluk katkısıyla büyüyen
+            kültürel arşiv. Bir ile tıklayın, o yörenin sesini dinleyin.
+          </p>
+        </div>
+        <dl class="hero-stats" aria-label="İstatistikler">
+          <div class="stat">
+            <dt class="stat-label">İl</dt>
+            <dd class="stat-value">${regionCount}</dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">Katkı</dt>
+            <dd class="stat-value">açık</dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">Kapsam</dt>
+            <dd class="stat-value">7</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  `;
+}
+
+function renderPanelEmpty(): string {
+  return `
+    <div class="panel-empty">
+      <div class="panel-empty-mark" aria-hidden="true">&ldquo;</div>
+      <h2 class="panel-empty-title">Henüz kayıt yok</h2>
+      <p class="panel-empty-text">
+        Bu bölgeden henüz sözcük eklenmemiş. İlk siz ekleyebilirsiniz &mdash;
+        yörenizden bir kelime, bir deyim, bir atasözü.
+      </p>
+      <a class="btn btn-primary" href="/contribute">Sözcük ekle</a>
+    </div>
+  `;
+}
+
+function renderWelcomePanel(): string {
+  return `
+    <div class="panel-empty">
+      <div class="panel-empty-mark" aria-hidden="true">&rarr;</div>
+      <h2 class="panel-empty-title">Bir il seçin</h2>
+      <p class="panel-empty-text">
+        Haritadan bir ile tıklayın ya da aşağıdan arayın. O yörenin sözcükleri burada belirsin.
+      </p>
+    </div>
+  `;
+}
 
 export async function renderHomePage(container: HTMLElement): Promise<void> {
   container.innerHTML = `
     <main class="home-page">
-      <section class="map-section"><div id="map" class="map"></div></section>
-      <aside class="entries-panel">
-        <h2 id="panel-title">Türkiye Yöresel Kelimeleri</h2>
-        <p id="panel-subtitle">Bir ile tıklayarak o yörenin kelimelerini görün.</p>
-        <div id="entries-list" class="entries-list"></div>
-      </aside>
+      ${renderHero(81)}
+      <div class="map-and-panel">
+        <section class="map-section" aria-label="Türkiye haritası">
+          <div id="map" class="map"></div>
+          <div class="map-hint" aria-hidden="true"><span>Bir ile tıklayarak başlayın</span></div>
+        </section>
+        <aside class="entries-panel" aria-live="polite">
+          <div class="panel-header">
+            <h2 id="panel-title" class="panel-title">Türkiye Yöresel Sözlüğü</h2>
+            <p id="panel-subtitle" class="panel-subtitle">
+              <strong>81 il</strong> &middot; Topluluk katkısıyla büyüyor
+            </p>
+          </div>
+          <div id="search-slot"></div>
+          <div id="entries-list" class="entries-list"></div>
+        </aside>
+      </div>
+      <section id="recent-slot" class="recent-section"></section>
     </main>
   `;
 
-  container.querySelector<HTMLElement>('.entries-panel')!.insertAdjacentHTML(
-    'afterbegin',
-    '<div id="search-slot" style="margin-bottom: var(--space-4)"></div>'
-  );
   renderSearchBar(
     document.getElementById('search-slot')!,
-    (entries) => {
-      if (entries.length === 0) {
-        // boş state veya bölge listesi gösterilebilir
-      }
+    (_entries: Entry[]) => {
+      /* search results surface here in future */
     }
   );
 
@@ -38,35 +103,118 @@ export async function renderHomePage(container: HTMLElement): Promise<void> {
   const subtitleEl = container.querySelector<HTMLParagraphElement>('#panel-subtitle')!;
 
   const mapView = new MapView(mapEl, {
-    onRegionClick: (region) => handleRegionClick(region),
+    onRegionClick: (region) => void handleRegionClick(region),
   });
 
   const regionsResult = await listRegions(db);
+  let regions: Region[] = [];
+
   if (regionsResult.ok) {
-    mapView.setRegions(regionsResult.data);
+    regions = regionsResult.data;
+    mapView.setRegions(regions);
   }
+
+  const regionNameById = new Map(regions.map((r) => [r.id, r.name]));
+
+  // Update hero "İl" stat with real count
+  const ilStat = container.querySelector<HTMLElement>('.hero-stats .stat:first-child .stat-value');
+  if (ilStat) ilStat.textContent = String(regions.length || 81);
 
   async function handleRegionClick(region: Region): Promise<void> {
     store.setSelectedRegion(region);
     mapView.highlightRegion(region.id);
     titleEl.textContent = region.name;
-    subtitleEl.textContent = `${region.parentRegion} Bölgesi`;
-    listEl.innerHTML = '<p class="loading">Yükleniyor...</p>';
+    // Safe DOM construction — never use innerHTML with server/user data
+    subtitleEl.replaceChildren();
+    const strong = document.createElement('strong');
+    strong.textContent = region.parentRegion;
+    subtitleEl.append(strong, document.createTextNode(' Bölgesi'));
+
+    listEl.innerHTML = '<p class="loading">Yükleniyor&hellip;</p>';
 
     const result = await listEntriesByRegion(db, region.id);
-    if (result.ok) {
-      renderEntries(result.data, listEl);
-    } else {
-      listEl.innerHTML = `<p class="error">${result.error.message}</p>`;
+    if (!result.ok) {
+      // Safe: build error element with textContent
+      listEl.replaceChildren();
+      const errP = document.createElement('p');
+      errP.className = 'error';
+      errP.textContent = result.error.message;
+      listEl.appendChild(errP);
+      return;
     }
+    renderEntries(result.data, listEl);
   }
 
   function renderEntries(entries: Entry[], target: HTMLElement): void {
     if (entries.length === 0) {
-      target.innerHTML = '<p class="empty">Bu bölgeden henüz kayıt yok. İlk siz ekleyin!</p>';
+      target.innerHTML = renderPanelEmpty();
       return;
     }
     target.innerHTML = '';
-    for (const entry of entries) target.appendChild(renderEntryCard(entry));
+    for (const entry of entries) {
+      target.appendChild(renderEntryCard(entry, regionNameById.get(entry.regionId)));
+    }
   }
+
+  if (regions.length === 0) {
+    listEl.innerHTML = renderWelcomePanel();
+  }
+
+  // Son Eklenenler section
+  const recentSlot = container.querySelector<HTMLElement>('#recent-slot')!;
+  void renderRecentSection(recentSlot, regionNameById);
+}
+
+async function renderRecentSection(
+  slot: HTMLElement, regionNameById: Map<string, string>,
+): Promise<void> {
+  const result = await listRecentEntries(db, 10);
+  if (!result.ok) {
+    console.warn('[recent-entries]', result.error.code, result.error.message);
+    slot.remove();
+    return;
+  }
+  if (result.data.length === 0) {
+    slot.remove();
+    return;
+  }
+
+  const heading = document.createElement('h2');
+  heading.className = 'recent-heading';
+  heading.textContent = 'Son Eklenenler';
+
+  const grid = document.createElement('div');
+  grid.className = 'recent-grid';
+  grid.setAttribute('aria-label', 'Son eklenen 10 sözcük');
+
+  for (const entry of result.data) {
+    grid.appendChild(renderRecentCard(entry, regionNameById.get(entry.regionId)));
+  }
+
+  slot.replaceChildren(heading, grid);
+}
+
+function renderRecentCard(entry: Entry, regionName: string | undefined): HTMLElement {
+  const card = document.createElement('a');
+  card.className = 'recent-card';
+  card.href = `/entry/${encodeURIComponent(entry.slug || entry.id)}`;
+
+  const typeLabel = document.createElement('span');
+  typeLabel.className = 'recent-card-type';
+  typeLabel.textContent = ENTRY_TYPE_LABELS[entry.type];
+
+  const word = document.createElement('h3');
+  word.className = 'recent-card-word';
+  word.textContent = entry.word;
+
+  const meaning = document.createElement('p');
+  meaning.className = 'recent-card-meaning';
+  meaning.textContent = entry.meaning;
+
+  const meta = document.createElement('span');
+  meta.className = 'recent-card-region';
+  meta.textContent = regionName ?? entry.regionId;
+
+  card.append(typeLabel, word, meaning, meta);
+  return card;
 }

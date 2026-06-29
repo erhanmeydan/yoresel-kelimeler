@@ -1,6 +1,6 @@
 import { auth, db } from '../config/firebase';
 import { createReport } from '../services/reports.service';
-import { showAuthModal } from './AuthModal';
+import { showAuthDrawer } from './AuthDrawer';
 
 export function renderReportButton(container: HTMLElement, entryId: string): void {
   const button = document.createElement('button');
@@ -10,7 +10,7 @@ export function renderReportButton(container: HTMLElement, entryId: string): voi
   button.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) {
-      showAuthModal(() => {});
+      showAuthDrawer('login');
       return;
     }
     const reason = window.prompt('Bildirim nedeni:');

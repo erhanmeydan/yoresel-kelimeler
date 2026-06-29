@@ -1,26 +1,85 @@
+/* ==========================================================================
+   Yöresel Kelimeler — Design Tokens
+   OKLCH throughout. Restrained strategy: near-white surface, deep moss primary.
+   ========================================================================== */
+
 :root {
-  --color-bg: #faf7f2;
-  --color-surface: #ffffff;
-  --color-primary: #b8492c;
-  --color-primary-hover: #9a3d24;
-  --color-text: #2b2118;
-  --color-muted: #6b5d4f;
-  --color-border: #e8e0d4;
-  --color-success: #4a7c59;
-  --color-danger: #b3361c;
-  --color-warning: #c89432;
+  /* Surfaces — pure white (NOT cream/sand trap) with the faintest brand tint */
+  --color-bg: oklch(0.985 0.003 140);          /* page bg, very faint moss undertone */
+  --color-surface: oklch(1 0 0);               /* cards, panels — pure white */
+  --color-surface-2: oklch(0.97 0.005 140);    /* sunken panels, subtle hover */
 
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Ink & muted */
+  --color-text: oklch(0.18 0.008 145);         /* body text — near-black, brand hue */
+  --color-text-soft: oklch(0.32 0.01 145);     /* secondary headings */
+  --color-muted: oklch(0.48 0.012 140);        /* captions, meta — ≥4.5:1 */
+  --color-muted-2: oklch(0.62 0.012 140);      /* placeholder, very tertiary */
 
-  --radius-sm: 4px;
-  --radius: 8px;
-  --radius-lg: 12px;
+  /* Brand primary — deep moss, restrained use */
+  --color-primary: oklch(0.42 0.085 145);
+  --color-primary-hover: oklch(0.36 0.09 145);
+  --color-primary-soft: oklch(0.94 0.02 145);  /* tinted bg for primary surfaces */
+  --color-on-primary: oklch(0.99 0.005 145);   /* text on primary fills */
 
-  --shadow-sm: 0 1px 3px rgba(43, 33, 24, 0.08);
-  --shadow-md: 0 4px 12px rgba(43, 33, 24, 0.10);
-  --shadow-lg: 0 12px 28px rgba(43, 33, 24, 0.16);
+  /* Accent — warm ochre for editorial details (small doses only) */
+  --color-accent: oklch(0.65 0.14 60);
+  --color-accent-soft: oklch(0.93 0.04 60);
 
+  /* Semantic */
+  --color-success: oklch(0.55 0.13 150);
+  --color-danger: oklch(0.52 0.18 25);
+  --color-warning: oklch(0.72 0.14 75);
+
+  /* Borders — barely there */
+  --color-border: oklch(0.92 0.005 140);
+  --color-border-strong: oklch(0.85 0.008 140);
+  --color-divider: oklch(0.94 0.004 140);
+
+  /* Focus ring */
+  --color-focus: oklch(0.55 0.15 145);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --fs-xs: 0.75rem;       /* 12px */
+  --fs-sm: 0.875rem;      /* 14px */
+  --fs-base: 1rem;        /* 16px */
+  --fs-lg: 1.125rem;      /* 18px */
+  --fs-xl: 1.375rem;      /* 22px */
+  --fs-2xl: 1.75rem;      /* 28px */
+  --fs-3xl: clamp(2rem, 4vw, 2.75rem);   /* 32-44px */
+  --fs-4xl: clamp(2.5rem, 5.5vw, 3.75rem); /* 40-60px */
+  --fs-5xl: clamp(3rem, 7vw, 5rem);        /* 48-80px */
+
+  --lh-tight: 1.1;
+  --lh-snug: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.7;
+
+  --tracking-tight: -0.025em;
+  --tracking-snug: -0.012em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Shadows — soft, brand-tinted, low chroma */
+  --shadow-xs: 0 1px 2px oklch(0.18 0.008 145 / 0.04);
+  --shadow-sm: 0 2px 6px oklch(0.18 0.008 145 / 0.05);
+  --shadow-md: 0 6px 16px -2px oklch(0.18 0.008 145 / 0.08);
+  --shadow-lg: 0 16px 36px -4px oklch(0.18 0.008 145 / 0.12);
+  --shadow-xl: 0 24px 60px -8px oklch(0.18 0.008 145 / 0.18);
+
+  /* Spacing — 4px base */
+  --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -29,7 +88,30 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
 
-  --header-height: 64px;
-  --max-content-width: 1280px;
+  /* Layout */
+  --header-height: 72px;
+  --max-content-width: 1320px;
+  --max-prose-width: 68ch;
+  --sidebar-width: 420px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration: 200ms;
+  --duration-slow: 360ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

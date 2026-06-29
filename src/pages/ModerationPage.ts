@@ -39,16 +39,35 @@ async function loadReports(target: HTMLElement, _profile: UserProfile): Promise<
   for (const report of result.data) {
     const card = document.createElement('article');
     card.className = 'report-card';
-    card.innerHTML = `
-      <p><strong>Kayıt:</strong> ${report.entryId}</p>
-      <p><strong>Sebep:</strong> ${report.reason}</p>
-      <button class="btn-primary" data-action="remove">Kaldır</button>
-      <button class="btn-secondary" data-action="dismiss">Reddet</button>
-    `;
-    card.querySelector<HTMLButtonElement>('[data-action=remove]')!.addEventListener('click', async () => {
+
+    // Safe DOM construction — no user data via innerHTML (XSS)
+    const p1 = document.createElement('p');
+    const label1 = document.createElement('strong');
+    label1.textContent = 'Kayıt: ';
+    p1.append(label1, document.createTextNode(report.entryId));
+
+    const p2 = document.createElement('p');
+    const label2 = document.createElement('strong');
+    label2.textContent = 'Sebep: ';
+    p2.append(label2, document.createTextNode(report.reason));
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-primary';
+    removeBtn.dataset.action = 'remove';
+    removeBtn.textContent = 'Kaldır';
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.className = 'btn-secondary';
+    dismissBtn.dataset.action = 'dismiss';
+    dismissBtn.textContent = 'Reddet';
+
+    card.append(p1, p2, removeBtn, dismissBtn);
+
+    removeBtn.addEventListener('click', async () => {
       await removeEntryRemote(db, report.entryId, report.reason);
       card.remove();
     });
+
     target.appendChild(card);
   }
 }

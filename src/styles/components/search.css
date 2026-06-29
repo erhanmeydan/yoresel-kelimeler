@@ -1,15 +1,88 @@
-.search-bar { position: relative; }
-.search-bar input { padding-left: var(--space-5); }
+/* ==========================================================================
+   Search — refined input + dropdown results
+   ========================================================================== */
+
+.search-bar {
+  position: relative;
+}
+
+.search-bar-input {
+  padding-left: var(--space-7) !important;
+  background: var(--color-surface);
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
 .search-results {
-  position: absolute; top: 100%; left: 0; right: 0;
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + var(--space-2));
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  margin-top: var(--space-2);
-  max-height: 400px;
+  box-shadow: var(--shadow-lg);
+  max-height: 420px;
   overflow-y: auto;
-  z-index: 50;
-  padding: var(--space-2);
-  display: flex; flex-direction: column; gap: var(--space-2);
+  z-index: var(--z-dropdown);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  animation: dropdown-in var(--duration) var(--ease-out) both;
+}
+
+.search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+
+.search-result:hover,
+.search-result:focus-visible {
+  background: var(--color-surface-2);
+}
+
+.search-result-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-base);
+  color: var(--color-text);
+}
+
+.search-result-meta {
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+}
+
+.search-empty {
+  padding: var(--space-5);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,14 +1,38 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, GeoPoint } from 'firebase-admin/firestore';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(__dirname, '../.env.local') });
 
-const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}'
-) as Record<string, string>;
+// Service account: env var veya service-account.json dosyasından
+function loadServiceAccount(): Record<string, unknown> {
+  const fromEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (fromEnv && fromEnv.trim().length > 0) {
+    try {
+      return JSON.parse(fromEnv);
+    } catch (err) {
+      console.error('FIREBASE_SERVICE_ACCOUNT_JSON parse hatası:', err);
+      process.exit(1);
+    }
+  }
+  const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH ?? resolve(__dirname, '../service-account.json');
+  if (existsSync(filePath)) {
+    try {
+      return JSON.parse(readFileSync(filePath, 'utf8'));
+    } catch (err) {
+      console.error(`${filePath} okuma hatası:`, err);
+      process.exit(1);
+    }
+  }
+  console.error('Service account bulunamadı.');
+  process.exit(1);
+}
+
+const serviceAccount = loadServiceAccount() as Record<string, string>;
 
 const app = initializeApp({
   credential: cert(serviceAccount as Parameters<typeof cert>[0]),
@@ -27,9 +51,20 @@ interface ProvinceFeature {
 }
 
 function centroid(coords: number[][][][]): GeoPoint {
-  const flat = coords.flat(3) as number[][];
-  const lngs = flat.map((c) => c[0]);
-  const lats = flat.map((c) => c[1]);
+  // coords: MultiPolygon yapısı - tüm polygonların tüm ringlerinin tüm noktalarını düzleştir
+  const allPoints: number[][] = [];
+  for (const polygon of coords) {
+    for (const ring of polygon) {
+      for (const point of ring) {
+        allPoints.push(point);
+      }
+    }
+  }
+  const lngs = allPoints.map((p) => p[0]).filter((n): n is number => typeof n === 'number' && !isNaN(n));
+  const lats = allPoints.map((p) => p[1]).filter((n): n is number => typeof n === 'number' && !isNaN(n));
+  if (lngs.length === 0 || lats.length === 0) {
+    throw new Error('centroid: geçerli koordinat bulunamadı');
+  }
   return new GeoPoint(
     lats.reduce((a, b) => a + b, 0) / lats.length,
     lngs.reduce((a, b) => a + b, 0) / lngs.length,

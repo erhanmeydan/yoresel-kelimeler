@@ -21,7 +21,7 @@ export const updateWeeklyStats = onSchedule(
 
     const batch = db.batch();
     let writeCount = 0;
-    const statsCollection = db.collection('regionStats/weekly');
+    const statsCollection = db.collection('regionStats');
 
     for (const regionDoc of regionsSnap.docs) {
       try {

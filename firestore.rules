@@ -22,6 +22,24 @@ service cloud.firestore {
       return isSignedIn() && getUserRole() == 'admin';
     }
 
+    // Server-authoritative display name for the current user (anti-spoofing, #6).
+    function ownDisplayName() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName;
+    }
+
+    // The display name the client is allowed to denormalize: either the
+    // server-stored displayName or the account email (matches client fallback
+    // `user.displayName ?? user.email`).
+    function isOwnDisplayName(name) {
+      return name == ownDisplayName() || name == request.auth.token.email;
+    }
+
+    // Defense-in-depth (#8): reject content carrying angle brackets so that a
+    // future innerHTML regression cannot turn stored data into XSS.
+    function noAngleBrackets(value) {
+      return !(value is string) || !value.matches('.*[<>].*');
+    }
+
     function isValidEntry(data) {
       return data.word is string
           && data.word.size() > 0 && data.word.size() <= 100
@@ -34,17 +52,29 @@ service cloud.firestore {
           && data.status in ['active', 'removed']
           && data.slug is string
           && data.slug.size() > 0 && data.slug.size() <= 80
-          && data.slug.matches('^[a-z0-9-]+$');
+          && data.slug.matches('^[a-z0-9-]+$')
+          && noAngleBrackets(data.word)
+          && noAngleBrackets(data.meaning)
+          && noAngleBrackets(data.exampleSentence);
     }
 
-    // Fields that contributors are allowed to modify on their own entries
+    // Server-controlled fields must hold their initial values on create (#7).
+    function hasCleanServerFieldsOnCreate(data) {
+      return data.createdAt == request.time
+          && data.updatedAt == request.time
+          && data.removedReason == null
+          && data.removedBy == null
+          && data.removedAt == null
+          && data.searchTokens.size() == 0;
+    }
+
+    // Fields that contributors are allowed to modify on their own entries.
     function isOwnerEditableFields(data) {
-      // Only these string fields, nothing else
       return data.diff(resource.data).affectedKeys()
-          .hasOnly(['word', 'meaning', 'exampleSentence', 'type', 'updatedAt']);
+          .hasOnly(['word', 'meaning', 'exampleSentence', 'type', 'regionId', 'updatedAt']);
     }
 
-    // Immutable server-controlled fields must not change
+    // Immutable server-controlled fields must not change.
     function contributorIdImmutable(data) {
       return request.resource.data.contributorId == resource.data.contributorId;
     }
@@ -53,22 +83,24 @@ service cloud.firestore {
       return request.resource.data.contributorName == resource.data.contributorName;
     }
 
-    function regionIdImmutable(data) {
-      return request.resource.data.regionId == resource.data.regionId;
-    }
-
     function createdAtImmutable(data) {
       return request.resource.data.createdAt == resource.data.createdAt;
     }
 
     function likeCountImmutableForOwner(data) {
-      // Only moderators may change likeCount (via separate operations)
+      // Only the Cloud Function (admin SDK) or a moderator may change likeCount.
       return request.resource.data.likeCount == resource.data.likeCount;
     }
 
     function searchTokensImmutableForOwner(data) {
-      // Only server-managed; users must not set searchTokens directly
+      // Only server-managed; users must not set searchTokens directly.
       return request.resource.data.searchTokens == resource.data.searchTokens;
+    }
+
+    // Owner may keep the region unchanged or move the entry to another real region (#12).
+    function ownerRegionValid() {
+      return request.resource.data.regionId == resource.data.regionId
+          || exists(/databases/$(database)/documents/regions/$(request.resource.data.regionId));
     }
 
     match /regions/{regionId} {
@@ -76,20 +108,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Top regions leaderboard — public read, admin/service write only
+    // Top regions leaderboard — public read, Cloud Function (admin SDK) write only.
     match /regionStats/{regionId} {
       allow read: if true;
-      allow write: if false; // only Cloud Function (admin SDK) can write
+      allow write: if false;
     }
 
     match /users/{uid} {
-      allow read: if true;
+      // PII (email/role) must not be world-readable (#1): owner + moderators only.
+      allow read: if isOwner(uid) || isModerator();
       allow create: if isOwner(uid)
                      && request.resource.data.role == 'user'
                      && request.resource.data.contributionCount == 0
                      && request.resource.data.approvedCount == 0
                      && request.resource.data.removedCount == 0;
-      // Owner can update only safe fields; role/counts can only change via admin/server
+      // Owner can update only safe fields; role/counts can only change via admin/server.
       allow update: if isAdmin()
                      || (isOwner(uid)
                          && request.resource.data.role == resource.data.role
@@ -112,23 +145,37 @@ service cloud.firestore {
                      && request.resource.data.contributorName is string
                      && request.resource.data.contributorName.size() > 0
                      && request.resource.data.contributorName.size() <= 80
+                     && isOwnDisplayName(request.resource.data.contributorName)
+                     && hasCleanServerFieldsOnCreate(request.resource.data)
+                     && exists(/databases/$(database)/documents/regions/$(request.resource.data.regionId))
                      && exists(/databases/$(database)/documents/blockedUsers/$(request.auth.uid)) == false;
-      // Owner can edit only their own content fields; moderator can edit anything
+      // Owner can edit only their own content fields; moderator can edit anything.
       allow update: if isModerator() ||
                      (isSignedIn()
                       && resource.data.contributorId == request.auth.uid
                       && isOwnerEditableFields(request.resource.data)
+                      && ownerRegionValid()
                       && contributorIdImmutable(request.resource.data)
                       && contributorNameImmutable(request.resource.data)
                       && createdAtImmutable(request.resource.data)
                       && likeCountImmutableForOwner(request.resource.data)
-                      && searchTokensImmutableForOwner(request.resource.data))
-                     // Any signed-in user can increment likeCount by exactly 1
-                     || (isSignedIn()
-                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['likeCount'])
-                         && request.resource.data.likeCount == resource.data.likeCount + 1);
-      allow delete: if isModerator();
+                      && searchTokensImmutableForOwner(request.resource.data)
+                      && noAngleBrackets(request.resource.data.word)
+                      && noAngleBrackets(request.resource.data.meaning)
+                      && noAngleBrackets(request.resource.data.exampleSentence));
+      // Moderators or the contributor may delete (#12). likeCount is now a
+      // function-managed field, so the direct +1 update path is removed (#9).
+      allow delete: if isModerator()
+                     || (isSignedIn() && resource.data.contributorId == request.auth.uid);
+
+      // Per-user likes (#9): one doc per user, create-once. likeCount on the
+      // parent entry is maintained by the onLike* Cloud Functions (admin SDK).
+      match /likes/{uid} {
+        allow read: if true;
+        allow create: if isOwner(uid)
+                       && !exists(/databases/$(database)/documents/entries/$(entryId)/likes/$(uid));
+        allow delete: if isOwner(uid);
+      }
     }
 
     match /reports/{reportId} {
@@ -137,6 +184,7 @@ service cloud.firestore {
                      && request.resource.data.reason is string
                      && request.resource.data.reason.size() > 0
                      && request.resource.data.reason.size() <= 200
+                     && noAngleBrackets(request.resource.data.reason)
                      && request.resource.data.entryId is string;
       allow read: if isModerator() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
       allow update, delete: if isModerator();
@@ -148,6 +196,7 @@ service cloud.firestore {
     }
 
     match /comments/{commentId} {
+      // Comments are rendered to anonymous visitors on entry pages → public read (#5).
       allow read: if true;
       allow create: if isSignedIn()
                      && request.resource.data.authorId == request.auth.uid
@@ -155,11 +204,22 @@ service cloud.firestore {
                      && request.resource.data.authorName is string
                      && request.resource.data.authorName.size() > 0
                      && request.resource.data.authorName.size() <= 80
+                     && isOwnDisplayName(request.resource.data.authorName)
                      && request.resource.data.text is string
                      && request.resource.data.text.size() > 0
-                     && request.resource.data.text.size() <= 500;
-      allow update, delete: if (isSignedIn() && resource.data.authorId == request.auth.uid)
-                            || isModerator();
+                     && request.resource.data.text.size() <= 500
+                     && noAngleBrackets(request.resource.data.text);
+      // Author may edit only the text (#10); moderators may moderate any comment.
+      allow update: if (isSignedIn()
+                        && resource.data.authorId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+                        && request.resource.data.text is string
+                        && request.resource.data.text.size() > 0
+                        && request.resource.data.text.size() <= 500
+                        && noAngleBrackets(request.resource.data.text))
+                     || isModerator();
+      allow delete: if (isSignedIn() && resource.data.authorId == request.auth.uid)
+                     || isModerator();
     }
 
     match /blockedUsers/{uid} {

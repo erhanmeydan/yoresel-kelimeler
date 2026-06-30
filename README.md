@@ -188,6 +188,20 @@ computeSearchTokens(word, meaning, example)
 
 Hem backfill script hem Cloud Function (`onEntryCreate`) bunu kullanır. Yeni entry'ler otomatik search tokens ile gelir.
 
+## 🤖 Bu proje nasıl geliştiriliyor?
+
+Yapay zeka destekli geliştirme süreci kullanıyoruz. Akış 5 adımda özetlenebilir:
+
+1. **Geliştirme** — AI asistan ile kodu yazıyoruz, refactor ediyoruz, testlerini ekliyoruz.
+2. **Öneri** — Her değişiklik için GitHub'da PR açılır.
+3. **İnceleme** — AI her PR'da kodu inceler, neyin değiştiğini özetler, risk notları ekler.
+4. **Onay** — Maintainer (Erhan) inceleme sonrası squash merge ile onaylar.
+5. **Yayın** — GitHub Actions CI otomatik olarak frontend'i Firebase Hosting'e deploy eder; Cloud Functions gerektiğinde manuel olarak `firebase deploy` ile güncellenir.
+
+Bu akış **hem kendi geliştirmemiz hem dış katkılar için aynı şekilde çalışır**. Dışarıdan PR gönderdiğinizde AI review sizin de çalışır; hızlı ve şeffaf bir süreçtir.
+
+Detaylı süreç ve AI review beklentileri için [CONTRIBUTING.md](CONTRIBUTING.md) bakın.
+
 ## 🤝 Katkıda bulunma
 
 [CONTRIBUTING.md](CONTRIBUTING.md) rehberine bak. PR'lar `develop` branch'ine açılır.

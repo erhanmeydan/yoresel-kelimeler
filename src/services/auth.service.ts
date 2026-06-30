@@ -1,8 +1,8 @@
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  signInWithPopup, GoogleAuthProvider,
+  signInWithPopup, signInWithRedirect, GoogleAuthProvider,
   signOut as fbSignOut, onAuthStateChanged, updateProfile,
-  type User, type Auth,
+  getRedirectResult, type User, type Auth,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
 import { COLLECTIONS } from '../config/constants';
@@ -88,9 +88,22 @@ export async function signInWithGoogle(
   try {
     const provider = new GoogleAuthProvider();
     provider.setDefaultLanguage('tr');
-    const cred = await signInWithPopup(auth, provider);
-    await ensureUserProfile(db, cred.user, cred.user.displayName ?? 'Kullanıcı');
-    return { ok: true, data: cred.user };
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    // Check for redirect result first (handles page reload after OAuth callback)
+    const redirectResult = await getRedirectResult(auth);
+    if (redirectResult?.user) {
+      await ensureUserProfile(db, redirectResult.user, redirectResult.user.displayName ?? 'Kullanıcı');
+      return { ok: true, data: redirectResult.user };
+    }
+
+    // No redirect result → start new sign-in flow
+    // Use signInWithRedirect (not signInWithPopup) — required for iOS Safari
+    // where third-party cookie restrictions break popup-based Google OAuth.
+    await signInWithRedirect(auth, provider);
+    // signInWithRedirect throws — control never reaches here in normal flow.
+    // If it does resolve, treat as success.
+    return { ok: true, data: auth.currentUser! };
   } catch (err) {
     const code = (err as { code?: string }).code ?? 'unknown';
     return { ok: false, error: { code, message: mapAuthError(code) } };

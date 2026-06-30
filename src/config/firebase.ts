@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './firebase.config';
 
@@ -14,6 +14,11 @@ const config = {
 
 export const app: FirebaseApp = initializeApp(config);
 export const auth: Auth = getAuth(app);
+// LOCAL persistence: user session persists across page reloads and tabs
+// Critical fix: prevents auth state loss when user refreshes or navigates away
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn('[firebase] setPersistence failed:', err);
+});
 export const db: Firestore = getFirestore(app);
 
 const useEmulators =

@@ -33,13 +33,13 @@ export const updateWeeklyStats = onSchedule(
         const regionId = regionDoc.id;
         const regionName = (regionDoc.data().name as string) ?? regionId;
 
-        // Sample entry: likeCount desc, createdAt desc, limit 1
+        // Sample entry: most recent within last 7 days
+        // (uses existing regionId+status+createdAt composite index, no separate likeCount index needed)
         const sampleSnap = await db
           .collection('entries')
           .where('regionId', '==', regionId)
           .where('status', '==', 'active')
           .where('createdAt', '>=', sevenDaysAgo)
-          .orderBy('likeCount', 'desc')
           .orderBy('createdAt', 'desc')
           .limit(1)
           .get();

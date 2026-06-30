@@ -1,6 +1,11 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+
+if (getApps().length === 0) {
+  initializeApp();
+}
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -28,13 +33,13 @@ export const updateWeeklyStats = onSchedule(
         const regionId = regionDoc.id;
         const regionName = (regionDoc.data().name as string) ?? regionId;
 
-        // Sample entry: likeCount desc, createdAt desc, limit 1
+        // Sample entry: most recent within last 7 days
+        // (uses existing regionId+status+createdAt composite index, no separate likeCount index needed)
         const sampleSnap = await db
           .collection('entries')
           .where('regionId', '==', regionId)
           .where('status', '==', 'active')
           .where('createdAt', '>=', sevenDaysAgo)
-          .orderBy('likeCount', 'desc')
           .orderBy('createdAt', 'desc')
           .limit(1)
           .get();

@@ -147,4 +147,48 @@ Bu proje [Contributor Covenant](CODE_OF_CONDUCT.md) ile yönetilir. Katılarak k
 
 ---
 
+## 🤖 AI destekli review
+
+Bu projede PR'lar **otomatik olarak yapay zeka tarafından incelenir**. Süreç şu şekilde işler:
+
+### Açtığın her PR için AI:
+
+1. **Kod incelemesi** yapar:
+   - Best practices uyumu (TypeScript strict, sınıf ayrımı, error handling)
+   - Bug ve edge case tespiti
+   - Performans ve güvenlik kontrolü
+   - Test coverage uyumu
+2. **Spec compliance** kontrolü — değişiklik amacına uygun mu, scope creep var mı?
+3. **Özet raporu** hazırlar:
+   - Neyin değiştiği (commit-by-commit)
+   - Etki alanı (hangi dosyalar/modüller)
+   - Test durumu
+   - Bilinen riskler veya takip işleri
+
+### Süreç:
+
+- PR açtıktan sonra genelde **5-15 dakika içinde** review comment'i gelir
+- Review edilen PR'lar için conventional commits standardına uygun mesajlar ve test coverage beklentisi var
+- Maintainer squash merge ile onaylar
+- AI onayı **yerine geçmez** — sadece önizleme/süreç hızlandırma sağlar
+
+### Review için ipuçları:
+
+- Conventional commits formatında açıklayıcı commit mesajları yazın
+- Yeni feature için unit test ekleyin (TDD yaklaşımı)
+- `npm run typecheck` ve `npm run build` lokalde geçtiğinden emin olun
+- Büyük değişiklikler için önce issue açıp tartışın
+
+### Sık sorulanlar:
+
+**S: AI review hata yaparsa ne olur?**
+Y: Maintainer (Erhan) review eder, AI hatalı bulguları göz ardı edebilir.
+
+**S: External contributor olarak PR açarsam AI gizli bilgiye erişir mi?**
+Y: Hayır. AI sadece PR'daki diff ve repo'nun public kısmını görür. API keys, secrets vb. dosyalara erişemez.
+
+---
+
+
+
 **Sorular?** Issue aç veya mevcut issue'lara yorum yap.

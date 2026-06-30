@@ -53,6 +53,16 @@ export function renderHeader(container: HTMLElement): void {
 
       // Build profile menu safely — no innerHTML with user-controlled values (XSS)
       authSlot.replaceChildren();
+
+      // Primary CTA — Katkıda Bulun (always visible for logged-in users,
+      // especially helpful on mobile where map-based city selection is harder)
+      const contributeCta = document.createElement('a');
+      contributeCta.href = '/contribute';
+      contributeCta.className = 'btn btn-primary header-cta';
+      contributeCta.setAttribute('data-nav', 'contribute');
+      contributeCta.textContent = 'Katkıda Bulun';
+      authSlot.appendChild(contributeCta);
+
       const menu = document.createElement('div');
       menu.className = 'profile-menu';
 

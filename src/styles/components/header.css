@@ -113,6 +113,13 @@
   margin-left: auto;
 }
 
+.header-cta {
+  /* Primary CTA for logged-in users — visible on desktop & mobile */
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+
 .profile-menu {
   position: relative;
 }
@@ -195,4 +202,15 @@
 
 .profile-dropdown button {
   color: var(--color-danger);
+}
+
+/* Mobile responsiveness — hide profile name to keep CTA visible */
+@media (max-width: 767px) {
+  .header-cta {
+    font-size: var(--fs-xs);
+    padding: var(--space-2) var(--space-3);
+  }
+  .profile-name {
+    display: none;
+  }
 }

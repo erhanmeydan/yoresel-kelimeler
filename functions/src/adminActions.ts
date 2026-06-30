@@ -11,7 +11,16 @@ export const moderateEntry = onCall(async (request) => {
     throw new HttpsError('permission-denied', 'Yetkisiz.');
   }
 
-  const { entryId, action, reason } = request.data as { entryId: string; action: string; reason: string };
+  const { entryId, action, reason } = (request.data ?? {}) as Record<string, unknown>;
+  if (typeof entryId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(entryId)) {
+    throw new HttpsError('invalid-argument', 'Geçersiz entryId.');
+  }
+  if (action !== 'remove' && action !== 'restore') {
+    throw new HttpsError('invalid-argument', 'Geçersiz aksiyon.');
+  }
+  if (typeof reason !== 'string' || reason.length > 200) {
+    throw new HttpsError('invalid-argument', 'Geçersiz sebep.');
+  }
 
   return db.runTransaction(async (tx) => {
     const entryRef = db.doc(`entries/${entryId}`);

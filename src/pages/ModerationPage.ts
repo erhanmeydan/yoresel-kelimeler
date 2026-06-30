@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { getProfile } from '../services/auth.service';
 import { renderTabBar, type AdminTab } from '../components/admin/shared/TabBar';
@@ -6,8 +7,28 @@ import { renderCommentsTab } from '../components/admin/CommentsTab';
 import { renderUsersTab } from '../components/admin/UsersTab';
 import { renderStatsTab } from '../components/admin/StatsTab';
 
+/**
+ * Waits for Firebase Auth state to be ready.
+ * After PR #11 (setPersistence(browserLocalPersistence)), auth.currentUser
+ * is asynchronously restored on page load. Page render runs sync and
+ * may capture null. This helper ensures we have the user (or null) before
+ * proceeding.
+ */
+function waitForAuthUser(): Promise<typeof auth.currentUser> {
+  return new Promise((resolve) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(user);
+    });
+  });
+}
+
 export async function renderModerationPage(container: HTMLElement): Promise<void> {
-  const user = auth.currentUser;
+  const user = await waitForAuthUser();
   if (!user) {
     container.innerHTML = '<p class="error">Yetkisiz. Giriş yapın.</p>';
     return;

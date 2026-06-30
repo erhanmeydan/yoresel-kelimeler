@@ -24,7 +24,9 @@ describe('admin.service', () => {
       vi.mocked(httpsCallable).mockReturnValue((() => Promise.reject({ code: 'admin/error' })) as any);
       const result = await deleteComment('c1');
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toMatch(/^admin\//);
+      if (!result.ok) {
+        expect(result.error.code).toMatch(/^admin\//);
+      }
     });
   });
 
@@ -55,7 +57,9 @@ describe('admin.service', () => {
       vi.mocked(httpsCallable).mockReturnValue((() => Promise.resolve({ data: stats })) as any);
       const result = await getAdminStats();
       expect(result.ok).toBe(true);
-      expect(result.data).toEqual(stats);
+      if (result.ok) {
+        expect(result.data).toEqual(stats);
+      }
     });
   });
 });

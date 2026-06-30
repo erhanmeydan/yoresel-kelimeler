@@ -17,7 +17,9 @@ describe('adminUsers.service', () => {
       vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
       const result = await listBlockedUsers({} as any);
       expect(result.ok).toBe(true);
-      expect(result.data).toEqual([]);
+      if (result.ok) {
+        expect(result.data).toEqual([]);
+      }
     });
 
     it('returns error on firestore failure', async () => {
@@ -25,7 +27,9 @@ describe('adminUsers.service', () => {
       vi.mocked(getDocs).mockRejectedValue(new Error('firestore error'));
       const result = await listBlockedUsers({} as any);
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toMatch(/^admin\//);
+      if (!result.ok) {
+        expect(result.error.code).toMatch(/^admin\//);
+      }
     });
   });
 });

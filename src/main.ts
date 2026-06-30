@@ -2,9 +2,26 @@ import './styles/main.css';
 import { renderHeader } from './components/Header';
 import { renderFooter } from './components/Footer';
 import { renderHomePage } from './pages/HomePage';
-import { db } from './config/firebase';
+import { auth, db } from './config/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, collection } from 'firebase/firestore';
 import type { Entry } from './types/models';
+
+// Resolve once the first auth state (restored from IndexedDB) is known, so
+// protected pages and owner-only UI don't read a premature `null` user on a
+// direct load / refresh (#13). Cached so subsequent renders are instant.
+let authReady: Promise<User | null> | null = null;
+function waitForAuth(): Promise<User | null> {
+  if (!authReady) {
+    authReady = new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (user) => {
+        unsub();
+        resolve(user);
+      });
+    });
+  }
+  return authReady;
+}
 
 type Page =
   | { kind: 'home' }
@@ -51,6 +68,9 @@ async function migrateHashUrl(): Promise<void> {
 }
 
 async function render(): Promise<void> {
+  // Ensure Firebase has finished restoring the session before any page reads
+  // auth.currentUser synchronously.
+  await waitForAuth();
   await migrateHashUrl();
 
   const app = document.querySelector<HTMLDivElement>('#app');

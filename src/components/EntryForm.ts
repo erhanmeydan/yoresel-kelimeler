@@ -88,9 +88,7 @@ export async function renderEntryForm(
 
       <label class="form-field">
         <span>İl *</span>
-        <select name="regionId" required>
-          ${regions.map((r: Region) => `<option value="${r.id}">${r.name} (${r.parentRegion})</option>`).join('')}
-        </select>
+        <select name="regionId" required></select>
         ${isEdit ? '<small class="hint">İl değiştirilebilir.</small>' : ''}
       </label>
 
@@ -103,6 +101,15 @@ export async function renderEntryForm(
       </div>
     </form>
   `;
+
+  // Populate il <option>s via DOM (no innerHTML) so region names cannot inject markup (#11).
+  const regionSelect = container.querySelector<HTMLSelectElement>('select[name="regionId"]')!;
+  for (const r of regions as Region[]) {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.parentRegion})`;
+    regionSelect.appendChild(opt);
+  }
 
   // Pre-fill on edit
   if (isEdit && existing) {

@@ -1,5 +1,5 @@
 import { auth, db } from '../config/firebase';
-import { login, register, signInWithGoogle } from '../services/auth.service';
+import { login, register } from '../services/auth.service';
 import { validateRegister } from '../utils/validation';
 import { sanitizeText } from '../utils/sanitize';
 
@@ -28,11 +28,7 @@ export function showAuthDrawer(mode: 'login' | 'register' = 'login'): void {
             : 'Yeni bir hesap oluşturarak kültürel arşive katkıda bulunun.'}
         </p>
         <form id="auth-form" class="auth-form" novalidate>
-          <button type="button" class="btn-google">
-            ${GOOGLE_ICON}
-            <span>Google ile devam et</span>
-          </button>
-          <div class="auth-divider"><span>veya e-posta ile</span></div>
+          <div class="auth-divider"><span>e-posta ile devam et</span></div>
           <label class="auth-field" data-field="displayName" ${mode === 'login' ? 'hidden' : ''}>
             <span>Ad</span>
             <input name="displayName" required minlength="2" maxlength="40" autocomplete="name" />
@@ -138,21 +134,6 @@ export function showAuthDrawer(mode: 'login' | 'register' = 'login'): void {
       errorEl.textContent = result.error.message;
       errorEl.hidden = false;
       submitBtn.disabled = false;
-    }
-  });
-
-  // Google sign-in
-  const googleBtn = backdrop.querySelector<HTMLButtonElement>('.btn-google')!;
-  googleBtn.addEventListener('click', async () => {
-    errorEl.hidden = true;
-    googleBtn.disabled = true;
-    const result = await signInWithGoogle(auth, db);
-    if (result.ok) {
-      close();
-    } else {
-      errorEl.textContent = result.error.message;
-      errorEl.hidden = false;
-      googleBtn.disabled = false;
     }
   });
 

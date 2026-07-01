@@ -9,21 +9,45 @@ import { renderStatsTab } from '../components/admin/StatsTab';
 
 /**
  * Waits for Firebase Auth state to be ready.
- * After PR #11 (setPersistence(browserLocalPersistence)), auth.currentUser
- * is asynchronously restored on page load. Page render runs sync and
- * may capture null. This helper ensures we have the user (or null) before
- * proceeding.
+ * PR #11 added setPersistence(browserLocalPersistence). This makes auth state
+ * restore async, which races against page render. We use a robust 3-stage
+ * fallback: sync check → 200ms poll → observer + 2s timeout.
  */
 function waitForAuthUser(): Promise<typeof auth.currentUser> {
   return new Promise((resolve) => {
+    // 1. Sync check (most common case after first load)
     if (auth.currentUser) {
       resolve(auth.currentUser);
       return;
     }
+
+    // 2. Observer (waits for restore to settle)
+    let resolved = false;
     const unsub = onAuthStateChanged(auth, (user) => {
-      unsub();
-      resolve(user);
+      if (!resolved) {
+        resolved = true;
+        unsub();
+        resolve(user);
+      }
     });
+
+    // 3. Poll fallback (in case observer doesn't fire — 2s timeout)
+    const start = Date.now();
+    const poll = setInterval(() => {
+      if (auth.currentUser && !resolved) {
+        resolved = true;
+        unsub();
+        clearInterval(poll);
+        resolve(auth.currentUser);
+        return;
+      }
+      if (Date.now() - start > 2000 && !resolved) {
+        resolved = true;
+        unsub();
+        clearInterval(poll);
+        resolve(auth.currentUser);
+      }
+    }, 50);
   });
 }
 

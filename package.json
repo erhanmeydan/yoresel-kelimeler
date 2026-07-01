@@ -14,7 +14,9 @@
     "seed": "tsx scripts/seed.ts",
     "seed:regions": "tsx scripts/seed.ts",
     "seed:entries": "tsx scripts/seed-entries.ts",
-    "test:rules": "firebase emulators:exec --only firestore 'vitest run tests/rules'"
+    "test:rules": "firebase emulators:exec --only firestore 'vitest run tests/rules'",
+    "test:moderation:setup": "node scripts/create-test-admin.mjs",
+    "test:moderation": "node scripts/test-moderation-headless.mjs"
   },
   "dependencies": {
     "firebase": "^11.0.0",
@@ -27,6 +29,7 @@
     "dotenv": "^16.4.0",
     "firebase-admin": "^12.0.0",
     "jsdom": "^29.1.1",
+    "puppeteer": "^25.2.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vite": "^5.4.0",

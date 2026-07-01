@@ -1,5 +1,5 @@
 import { auth, db } from '../config/firebase';
-import { getProfile } from '../services/auth.service';
+import { ensureAuthReady, getProfile } from '../services/auth.service';
 import { renderTabBar, type AdminTab } from '../components/admin/shared/TabBar';
 import { renderReportsTab } from '../components/admin/ReportsTab';
 import { renderCommentsTab } from '../components/admin/CommentsTab';
@@ -7,11 +7,14 @@ import { renderUsersTab } from '../components/admin/UsersTab';
 import { renderStatsTab } from '../components/admin/StatsTab';
 
 export async function renderModerationPage(container: HTMLElement): Promise<void> {
-  // Simple sync auth check. If not authenticated, send the user to the page
-  // that hosts the auth drawer. No async wait, no observer, no polling.
-  const user = auth.currentUser;
+  // CRITICAL: wait for Firebase Auth to finish restoring the persisted
+  // session. `auth.currentUser` is null until that completes — see
+  // ensureAuthReady in src/services/auth.service.ts for the full reason.
+  // Without this, signed-in users see "Yetkisiz" on /moderation while
+  // /profile still works.
+  const user = await ensureAuthReady(auth);
   if (!user) {
-    window.location.href = '/contribute';
+    container.innerHTML = '<p class="error">Bu sayfayı görüntülemek için giriş yapmalısınız.</p>';
     return;
   }
 

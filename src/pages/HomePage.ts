@@ -30,10 +30,6 @@ function renderHero(regionCount: number): string {
             <dt class="stat-label">Katkı</dt>
             <dd class="stat-value">açık</dd>
           </div>
-          <div class="stat">
-            <dt class="stat-label">Kapsam</dt>
-            <dd class="stat-value">7</dd>
-          </div>
         </dl>
       </div>
     </section>

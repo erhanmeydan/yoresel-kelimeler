@@ -6,28 +6,33 @@
  * ensureAuthReady() in src/services/auth.service.ts to wait for Firebase
  * Auth to finish restoring the persisted session before checking auth.
  *
+ * This version of the test runs ENTIRELY against the Firebase emulator
+ * suite and a local `vite preview` build — it MUST NOT touch production.
+ * The previous version pointed at https://yoresel-kelimeler.web.app and
+ * accidentally created a "PENTEST" user in production Firebase. See PR
+ * for the migration story.
+ *
  * Flow:
- *   1. Open the deployed app (or vite preview).
- *   2. Open the auth drawer, sign in with email/password via the form.
- *   3. Wait for auth state to settle.
- *   4. Navigate to /moderation.
- *   5. Assert "Moderasyon Paneli" heading is visible.
- *   6. Assert 4 tab buttons (Raporlar, Yorumlar, Kullanıcılar, İstatistikler).
- *   7. Click Yorumlar tab and assert the comments list renders.
- *   8. Capture screenshots at each step.
+ *   1. Production guard: refuse to run if target is the production host
+ *      and emulator env vars are not set.
+ *   2. Read test credentials from scripts/.test-admin.json (created by
+ *      create-test-admin.mjs, which itself only writes to the emulator).
+ *   3. Wait for the local app server.
+ *   4. Launch headless Chrome, open the app, sign in via the auth drawer.
+ *   5. Navigate to /moderation and assert the panel renders.
  *
- * Run with:
- *   MOD_TEST_URL=http://localhost:5173 \
- *   TEST_MOD_EMAIL=admin@example.com \
- *   TEST_MOD_PASSWORD=secret \
+ * Run via the npm script (recommended — handles emulator lifecycle):
+ *   npm run test:moderation
+ *
+ * Or manually with emulators already running:
+ *   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+ *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+ *   MOD_TEST_URL=http://localhost:4173 \
  *   node scripts/test-moderation-headless.mjs
- *
- * Default URL is http://localhost:5173 (vite preview).
- * Set MOD_TEST_URL=https://yoresel-kelimeler.web.app to test production.
  */
 
 import { createRequire } from 'node:module';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import http from 'node:http';
@@ -37,12 +42,71 @@ const projectRoot = resolve(__dirname, '..');
 const require = createRequire(import.meta.url);
 const puppeteer = require(resolve(projectRoot, 'node_modules/puppeteer'));
 
-const TARGET_BASE = process.env.MOD_TEST_URL ?? 'http://localhost:5173';
+const TARGET_BASE = process.env.MOD_TEST_URL ?? 'http://localhost:4173';
 const TARGET_MOD = `${TARGET_BASE.replace(/\/$/, '')}/moderation`;
 const SCREENSHOT_DIR = resolve(projectRoot, 'screenshots');
 
-const TEST_EMAIL = process.env.TEST_MOD_EMAIL;
-const TEST_PASSWORD = process.env.TEST_MOD_PASSWORD;
+const PROD_HOSTS = [
+  'yoresel-kelimeler.web.app',
+  'yoresel-kelimeler.firebaseapp.com',
+];
+
+// ---------------------------------------------------------------------------
+// Production guard
+// ---------------------------------------------------------------------------
+const isProdHost = PROD_HOSTS.some((h) => TARGET_BASE.includes(h));
+const emuActive =
+  Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST) &&
+  Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+
+if (isProdHost) {
+  console.error(
+    '[mod-test] ❌ REFUSING: target ' +
+      TARGET_BASE +
+      ' is production. Set MOD_TEST_URL to a local preview server ' +
+      '(e.g. http://localhost:4173) and run against emulators.',
+  );
+  process.exit(1);
+}
+if (!emuActive) {
+  console.error(
+    '[mod-test] ❌ REFUSING: emulator env vars are not set.\n' +
+      '   Start the emulators first (npm run emulators) or use `npm run test:moderation` ' +
+      'which orchestrates emulator + test.',
+  );
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// Test credentials
+// ---------------------------------------------------------------------------
+function loadCreds() {
+  const credPath = resolve(projectRoot, 'scripts/.test-admin.json');
+  if (process.env.TEST_MOD_EMAIL && process.env.TEST_MOD_PASSWORD) {
+    return {
+      email: process.env.TEST_MOD_EMAIL,
+      password: process.env.TEST_MOD_PASSWORD,
+      uid: process.env.TEST_MOD_UID ?? null,
+    };
+  }
+  if (!existsSync(credPath)) {
+    console.error(
+      '[mod-test] ❌ No credentials. Either:\n' +
+        '   - Run `npm run test:moderation:setup` first to create scripts/.test-admin.json, OR\n' +
+        '   - Set TEST_MOD_EMAIL and TEST_MOD_PASSWORD env vars.',
+    );
+    process.exit(1);
+  }
+  const c = JSON.parse(readFileSync(credPath, 'utf-8'));
+  if (!c.email || !c.password) {
+    console.error('[mod-test] ❌ Malformed .test-admin.json — missing email/password');
+    process.exit(1);
+  }
+  return c;
+}
+
+const TEST_EMAIL = loadCreds().email;
+const TEST_PASSWORD = loadCreds().password;
 
 function log(...args) {
   console.log('[mod-test]', ...args);
@@ -58,7 +122,10 @@ async function waitForServer(url, attempts = 30) {
   for (let i = 0; i < attempts; i++) {
     try {
       await new Promise((resolveP, rejectP) => {
-        const req = http.get(url, (res) => { res.resume(); resolveP(); });
+        const req = http.get(url, (res) => {
+          res.resume();
+          resolveP();
+        });
         req.on('error', rejectP);
         req.setTimeout(1000, () => req.destroy(new Error('timeout')));
       });
@@ -85,14 +152,13 @@ async function assertNoYetkisiz(page) {
 }
 
 async function run() {
-  if (!TEST_EMAIL || !TEST_PASSWORD) {
-    fail('TEST_MOD_EMAIL and TEST_MOD_PASSWORD env vars required.');
-  }
-
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
   log('target base:', TARGET_BASE);
   log('target mod :', TARGET_MOD);
+  log('auth emu   :', process.env.FIREBASE_AUTH_EMULATOR_HOST);
+  log('fs emu     :', process.env.FIRESTORE_EMULATOR_HOST);
+  log('user       :', TEST_EMAIL);
   await waitForServer(TARGET_BASE);
 
   log('launching headless chrome');
@@ -136,12 +202,7 @@ async function run() {
 
   // 4. Wait for auth state to settle (auth.currentUser populates, drawer closes).
   log('waiting for auth state...');
-  // The header switches to the profile button (#logout-btn appears inside the dropdown).
-  // We can also wait for /profile to work, but we'll instead wait for the drawer
-  // to be removed and a profile menu to appear.
   await page.waitForFunction(() => {
-    // Logout button is inside the profile dropdown which is hidden by default,
-    // so we check for the profile button itself.
     return document.querySelector('.profile-button') !== null;
   }, { timeout: 15000 });
   log('auth state detected (profile button rendered)');
@@ -195,10 +256,6 @@ async function run() {
   await new Promise((r) => setTimeout(r, 2000));
   await shoot(page, 'yorumlar-tab');
 
-  // The tab content should now have populated — either with a list of
-  // comment cards, or an empty-state, or an error. All three are
-  // acceptable; what matters is that the page is NOT showing
-  // "Yetkisiz" and that the heading is still "Moderasyon Paneli".
   const tabHeading = await page.evaluate(() => {
     const h = document.querySelector('h2, h1');
     return h?.textContent?.trim() ?? null;
@@ -212,7 +269,6 @@ async function run() {
   log('ALL ASSERTIONS PASSED');
   await shoot(page, 'final-success');
 
-  // 9. Log result summary as JSON to stdout for CI consumption.
   const summary = {
     ok: true,
     target: TARGET_MOD,
@@ -220,7 +276,10 @@ async function run() {
     tabs: tabLabels,
     screenshot: resolve(SCREENSHOT_DIR, 'moderation-final-success.png'),
   };
-  writeFileSync(resolve(SCREENSHOT_DIR, 'moderation-test-result.json'), JSON.stringify(summary, null, 2));
+  writeFileSync(
+    resolve(SCREENSHOT_DIR, 'moderation-test-result.json'),
+    JSON.stringify(summary, null, 2),
+  );
   console.log(JSON.stringify(summary, null, 2));
 
   await browser.close();

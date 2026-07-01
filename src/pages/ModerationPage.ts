@@ -10,28 +10,44 @@ import { renderStatsTab } from '../components/admin/StatsTab';
 /**
  * Waits for Firebase Auth state to be ready.
  * PR #11 added setPersistence(browserLocalPersistence). This makes auth state
- * restore async, which races against page render. We use a robust 3-stage
- * fallback: sync check → 200ms poll → observer + 2s timeout.
+ * restore async, which races against page render.
+ *
+ * Aggressive fallback chain (PR #19):
+ * 1. Sync currentUser check
+ * 2. Try getIdToken(true) — forces token refresh, may unblock restoration
+ * 3. onAuthStateChanged observer
+ * 4. 5s poll for sync currentUser to become non-null
+ * 5. Final sync check at 5s timeout
+ *
+ * If after 5s the user is still null, returns null. Caller should handle
+ * this by re-prompting the user to log in.
  */
-function waitForAuthUser(): Promise<typeof auth.currentUser> {
-  return new Promise((resolve) => {
-    // 1. Sync check (most common case after first load)
-    if (auth.currentUser) {
-      resolve(auth.currentUser);
-      return;
-    }
+async function waitForAuthUser(): Promise<typeof auth.currentUser> {
+  // 1. Sync check
+  if (auth.currentUser) return auth.currentUser;
 
-    // 2. Observer (waits for restore to settle)
+  // 2. Force token refresh — sometimes triggers restoration
+  try {
+    const initialUser = (auth as unknown as { currentUser: { getIdToken: (force: boolean) => Promise<string> } | null }).currentUser;
+    if (initialUser) {
+      await initialUser.getIdToken(true);
+      if (auth.currentUser) return auth.currentUser;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Observer + 4. Poll, return at 5s
+  return new Promise((resolve) => {
     let resolved = false;
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!resolved) {
         resolved = true;
         unsub();
+        clearInterval(poll);
         resolve(user);
       }
     });
-
-    // 3. Poll fallback (in case observer doesn't fire — 2s timeout)
     const start = Date.now();
     const poll = setInterval(() => {
       if (auth.currentUser && !resolved) {
@@ -41,20 +57,30 @@ function waitForAuthUser(): Promise<typeof auth.currentUser> {
         resolve(auth.currentUser);
         return;
       }
-      if (Date.now() - start > 2000 && !resolved) {
+      if (Date.now() - start > 5000 && !resolved) {
         resolved = true;
         unsub();
         clearInterval(poll);
         resolve(auth.currentUser);
       }
-    }, 50);
+    }, 100);
   });
 }
 
 export async function renderModerationPage(container: HTMLElement): Promise<void> {
+  // Show "Yükleniyor..." while we wait for auth state
+  container.innerHTML = '<p class="muted">Yükleniyor...</p>';
+
   const user = await waitForAuthUser();
   if (!user) {
-    container.innerHTML = '<p class="error">Yetkisiz. Giriş yapın.</p>';
+    // After 5s, auth still missing — show explicit re-login prompt
+    container.innerHTML = `
+      <div class="page-container moderation-page">
+        <h2>Moderasyon Paneli</h2>
+        <p class="error">Oturum açılamadı. Lütfen tekrar giriş yapın.</p>
+        <a class="btn btn-primary" href="/contribute">Giriş sayfasına git</a>
+      </div>
+    `;
     return;
   }
 

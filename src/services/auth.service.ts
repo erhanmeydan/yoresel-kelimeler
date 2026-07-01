@@ -85,27 +85,100 @@ export async function login(
 export async function signInWithGoogle(
   auth: Auth, db: Firestore,
 ): Promise<ServiceResult<User>> {
-  try {
-    const provider = new GoogleAuthProvider();
-    provider.setDefaultLanguage('tr');
-    provider.setCustomParameters({ prompt: 'select_account' });
+  const provider = new GoogleAuthProvider();
+  provider.setDefaultLanguage('tr');
+  provider.setCustomParameters({ prompt: 'select_account' });
 
-    // Check for redirect result first (handles page reload after OAuth callback)
+  // 1) On every entry, check whether we are returning from a redirect-based
+  //    sign-in (signInWithRedirect navigates the full page; on reload we may
+  //    be arriving back from the Google OAuth callback). This must run
+  //    before we attempt any new popup so it can short-circuit.
+  try {
     const redirectResult = await getRedirectResult(auth);
     if (redirectResult?.user) {
-      await ensureUserProfile(db, redirectResult.user, redirectResult.user.displayName ?? 'Kullanıcı');
+      // eslint-disable-next-line no-console
+      console.log('[auth] signInWithGoogle: redirect result restored', {
+        uid: redirectResult.user.uid,
+        email: redirectResult.user.email,
+      });
+      await ensureUserProfile(
+        db,
+        redirectResult.user,
+        redirectResult.user.displayName ?? 'Kullanıcı',
+      );
       return { ok: true, data: redirectResult.user };
     }
+  } catch (err) {
+    // getRedirectResult can itself fail (e.g. user dismissed the flow).
+    // Log and fall through — we will attempt a fresh popup next.
+    const code = (err as { code?: string }).code ?? 'unknown';
+    // eslint-disable-next-line no-console
+    console.warn('[auth] signInWithGoogle: getRedirectResult error', {
+      code,
+      message: (err as Error).message,
+    });
+  }
 
-    // No redirect result → start new sign-in flow
-    // Use signInWithRedirect (not signInWithPopup) — required for iOS Safari
-    // where third-party cookie restrictions break popup-based Google OAuth.
-    await signInWithRedirect(auth, provider);
-    // signInWithRedirect throws — control never reaches here in normal flow.
-    // If it does resolve, treat as success.
-    return { ok: true, data: auth.currentUser! };
+  // 2) Primary path: try signInWithPopup. Works on Chrome desktop and Safari
+  //    desktop. Faster UX (no full-page navigation), and gives us a User in
+  //    the same call site.
+  try {
+    const cred = await signInWithPopup(auth, provider);
+    // eslint-disable-next-line no-console
+    console.log('[auth] signInWithGoogle: popup success', {
+      uid: cred.user.uid,
+      email: cred.user.email,
+    });
+    await ensureUserProfile(db, cred.user, cred.user.displayName ?? 'Kullanıcı');
+    return { ok: true, data: cred.user };
   } catch (err) {
     const code = (err as { code?: string }).code ?? 'unknown';
+    // eslint-disable-next-line no-console
+    console.warn('[auth] signInWithGoogle: popup failed', {
+      code,
+      message: (err as Error).message,
+    });
+
+    // 3) Fallback: if the popup was blocked, closed, or otherwise unavailable
+    //    (covers iOS Safari and any browser where third-party cookies/popups
+    //    are restricted), switch to a full-page redirect. This navigates the
+    //    current tab to Google's OAuth page; the result is consumed the next
+    //    time this function runs (step 1 above).
+    const redirectCodes = new Set([
+      'auth/popup-blocked',
+      'auth/popup-closed-by-user',
+      'auth/cancelled-popup-request',
+      'auth/operation-not-supported-in-this-environment',
+      'auth/web-storage-unsupported',
+    ]);
+    if (redirectCodes.has(code)) {
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[auth] signInWithGoogle: falling back to redirect');
+        await signInWithRedirect(auth, provider);
+        // signInWithRedirect navigates — control does not normally reach here.
+        // If it does (e.g. an unusual env), currentUser may not yet be set.
+        return { ok: true, data: auth.currentUser ?? (null as unknown as User) };
+      } catch (redirectErr) {
+        const redirectCode = (redirectErr as { code?: string }).code ?? 'unknown';
+        // eslint-disable-next-line no-console
+        console.error('[auth] signInWithGoogle: redirect fallback failed', {
+          code: redirectCode,
+          message: (redirectErr as Error).message,
+        });
+        return {
+          ok: false,
+          error: { code: redirectCode, message: mapAuthError(redirectCode) },
+        };
+      }
+    }
+
+    // Non-redirect-eligible error (e.g. network, configuration). Surface it.
+    // eslint-disable-next-line no-console
+    console.error('[auth] signInWithGoogle: non-fallback error', {
+      code,
+      message: (err as Error).message,
+    });
     return { ok: false, error: { code, message: mapAuthError(code) } };
   }
 }

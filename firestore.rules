@@ -111,7 +111,8 @@ service cloud.firestore {
                      && request.resource.data.likeCount == 0
                      && request.resource.data.contributorName is string
                      && request.resource.data.contributorName.size() > 0
-                     && request.resource.data.contributorName.size() <= 80;
+                     && request.resource.data.contributorName.size() <= 80
+                     && exists(/databases/$(database)/documents/blockedUsers/$(request.auth.uid)) == false;
       // Owner can edit only their own content fields; moderator can edit anything
       allow update: if isModerator() ||
                      (isSignedIn()
@@ -157,8 +158,23 @@ service cloud.firestore {
                      && request.resource.data.text is string
                      && request.resource.data.text.size() > 0
                      && request.resource.data.text.size() <= 500;
-      allow update, delete: if isSignedIn()
-                            && resource.data.authorId == request.auth.uid;
+      allow update, delete: if (isSignedIn() && resource.data.authorId == request.auth.uid)
+                            || isModerator();
+    }
+
+    match /blockedUsers/{uid} {
+      allow read: if isModerator();
+      allow write: if false;
+    }
+
+    match /auditLog/{id} {
+      allow read: if isModerator();
+      allow write: if false;
+    }
+
+    match /counters/adminStats {
+      allow read: if isModerator();
+      allow write: if false;
     }
   }
 }

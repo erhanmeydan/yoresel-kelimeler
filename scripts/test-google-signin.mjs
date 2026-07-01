@@ -1,28 +1,42 @@
 /**
- * Headless browser test for the Google sign-in flow on production.
+ * Headless browser test for the Google sign-in flow against the
+ * Firebase emulator + local vite preview. (Previously pointed at
+ * production at https://yoresel-kelimeler.web.app — that has been
+ * migrated to keep the test off production.)
  *
  * Verifies the user-reported bug: "Google login çalışmıyor".
  *
  * Flow:
- *   1. Launch headless Chrome with a persistent user-data-dir.
- *   2. Navigate to https://yoresel-kelimeler.web.app.
- *   3. Click "Giriş Yap" to open the auth drawer.
- *   4. Click the "Google ile devam et" button (.btn-google).
- *   5. Capture every URL change as the OAuth redirect chain plays out
- *      (Firebase → accounts.google.com → callback).
- *   6. Capture every console message and every failed network request.
- *   7. After the redirect completes, check whether the auth state was
+ *   1. Production guard: refuse to run against production hosts and
+ *      require emulator env vars to be set.
+ *   2. Launch headless Chrome.
+ *   3. Navigate to the local preview (default http://localhost:4173).
+ *   4. Click "Giriş Yap" to open the auth drawer.
+ *   5. Click the "Google ile devam et" button (.btn-google).
+ *   6. Capture every URL change as the OAuth redirect chain plays out
+ *      (Firebase emulator auth handler → accounts.google.com → callback).
+ *   7. Capture every console message and every failed network request.
+ *   8. After the redirect completes, check whether the auth state was
  *      restored (profile button rendered) or whether an error is shown.
  *
- * Because we don't have credentials for erhanmeydan@me.com here, the test
- * cannot actually complete the OAuth consent screen — but it WILL catch:
+ * Because the Firebase auth emulator uses a special non-Google IdP (the
+ * "anonymous" provider) by default and we do not have Google OAuth
+ * credentials wired in, this test cannot fully complete the consent
+ * screen — but it WILL catch:
+ *   - missing/incorrect Firebase Auth domain configuration
+ *   - third-party-cookie blocking in headless Chrome
+ *   - network failures during the OAuth handshake
+ *   - auth state not being restored after the redirect
  *   - "redirect_uri_mismatch" errors shown on accounts.google.com
- *   - Third-party-cookie blocking in headless Chrome
- *   - Network failures during the OAuth handshake
- *   - Missing/incorrect Firebase Auth domain configuration
- *   - Auth state not being restored after the redirect
+ *     (the test still records Google-bound URLs)
  *
- * Run with:
+ * Run via the npm script (recommended — handles emulator lifecycle):
+ *   npm run test:google
+ *
+ * Or manually with emulators already running:
+ *   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+ *   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+ *   GOOGLE_TEST_URL=http://localhost:4173 \
  *   node scripts/test-google-signin.mjs
  */
 
@@ -36,8 +50,38 @@ const projectRoot = resolve(__dirname, '..');
 const require = createRequire(import.meta.url);
 const puppeteer = require(resolve(projectRoot, 'node_modules/puppeteer'));
 
-const TARGET = process.env.GOOGLE_TEST_URL ?? 'https://yoresel-kelimeler.web.app';
+const TARGET = process.env.GOOGLE_TEST_URL ?? 'http://localhost:4173';
 const SCREENSHOT_DIR = resolve(projectRoot, 'screenshots');
+
+const PROD_HOSTS = [
+  'yoresel-kelimeler.web.app',
+  'yoresel-kelimeler.firebaseapp.com',
+];
+
+// ---------------------------------------------------------------------------
+// Production guard
+// ---------------------------------------------------------------------------
+const isProdHost = PROD_HOSTS.some((h) => TARGET.includes(h));
+const emuActive =
+  Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST) &&
+  Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+
+if (isProdHost) {
+  console.error(
+    '[google-test] ❌ REFUSING: target ' +
+      TARGET +
+      ' is production. Set GOOGLE_TEST_URL to a local preview server ' +
+      '(e.g. http://localhost:4173).',
+  );
+  process.exit(1);
+}
+if (!emuActive) {
+  console.error(
+    '[google-test] ❌ REFUSING: emulator env vars are not set.\n' +
+      '   Start the emulators (npm run emulators) or use `npm run test:google`.',
+  );
+  process.exit(1);
+}
 
 function log(...args) {
   console.log('[google-test]', ...args);
@@ -53,6 +97,8 @@ async function run() {
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
   log('target:', TARGET);
+  log('auth emu:', process.env.FIREBASE_AUTH_EMULATOR_HOST);
+  log('fs emu  :', process.env.FIRESTORE_EMULATOR_HOST);
   log('launching headless chrome');
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -67,7 +113,6 @@ async function run() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900 });
 
-  // Set a realistic UA so Google's OAuth page doesn't bail.
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
     '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -86,7 +131,6 @@ async function run() {
     if (type === 'error' || type === 'warning') {
       consoleErrors.push({ type, text: text.slice(0, 500) });
     }
-    // Log everything for completeness
     log(`  console.${type}:`, text.slice(0, 200));
   });
 
@@ -117,29 +161,28 @@ async function run() {
       status,
       resourceType: req.resourceType(),
     });
-    // Track OAuth-related responses
     if (
       url.includes('accounts.google.com') ||
-      url.includes('firebaseapp.com/__/auth/') ||
+      url.includes('__/auth/handler') ||
       url.includes('identitytoolkit.googleapis.com') ||
-      url.includes('securetoken.googleapis.com')
+      url.includes('securetoken.googleapis.com') ||
+      url.includes('127.0.0.1:9099') // emulator auth
     ) {
       log(`  response ${status} [${req.resourceType()}]`, url.slice(0, 200));
     }
   });
 
-  // Track every frame navigation. Puppeteer's `framenavigated` fires for both
-  // top-level and sub-frame navigations.
   page.on('framenavigated', (frame) => {
     const url = frame.url();
     urlChanges.push({ url, time: Date.now() });
     if (frame === page.mainFrame()) {
       log('  navigation →', url);
-      // Capture the redirect chain leading to/from Google.
       if (
         url.includes('accounts.google.com') ||
         url.includes('__/auth/handler') ||
-        url.includes('yoresel-kelimeler')
+        url.includes('yoresel-kelimeler') ||
+        url.includes('127.0.0.1') ||
+        url.includes('localhost')
       ) {
         redirectChain.push(url);
       }
@@ -180,27 +223,34 @@ async function run() {
   log('Google button found.');
 
   // 4. Click the Google button. This triggers signInWithRedirect, which
-  //    navigates the entire page to accounts.google.com.
+  //    navigates the entire page to the auth handler (and on to Google
+  //    in production, or to the emulator's mock OAuth in dev).
   log('clicking Google button');
   await googleBtn.click();
 
   // 5. Wait for the redirect chain to play out. The page navigates away
-  //    to accounts.google.com and then back to the app's __/auth/handler.
-  //    In headless mode without cookies, Google will show the consent screen
-  //    OR — if the domain is misconfigured — a redirect_uri_mismatch page.
+  //    to accounts.google.com (or the emulator's mock) and then back to
+  //    the app's __/auth/handler. In headless mode without cookies,
+  //    Google will show the consent screen OR — if the domain is
+  //    misconfigured — a redirect_uri_mismatch page.
   log('waiting for redirect chain...');
 
-  // Wait up to 30s for navigation to either:
-  //   - accounts.google.com (OAuth consent started)
-  //   - OR back to the app (redirect completed, with or without error)
   let sawGoogle = false;
   let sawReturn = false;
   const start = Date.now();
+  const backToApp = (url) =>
+    url.includes('yoresel-kelimeler') ||
+    url.includes('127.0.0.1') ||
+    url.includes('localhost');
   while (Date.now() - start < 30000) {
     const url = page.url();
     if (url.includes('accounts.google.com')) sawGoogle = true;
-    // Once we've gone to Google and come back to yoresel-kelimeler, we're done.
-    if (sawGoogle && url.includes('yoresel-kelimeler')) {
+    if (sawGoogle && backToApp(url)) {
+      sawReturn = true;
+      break;
+    }
+    // If the emulator auth handler exists on this host, also consider that a return.
+    if (url.includes('__/auth/handler')) {
       sawReturn = true;
       break;
     }

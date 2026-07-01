@@ -15,7 +15,14 @@ export async function listAllComments(
     const snap = await getDocs(q);
     const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Comment);
     return { ok: true, data };
-  } catch {
-    return { ok: false, error: { code: 'comments/admin-list-failed', message: 'Yorumlar yüklenemedi.' } };
+  } catch (err) {
+    console.error('[listAllComments] firestore error:', err);
+    return {
+      ok: false,
+      error: {
+        code: `comments/admin-list-failed:${(err as { code?: string }).code ?? 'unknown'}`,
+        message: `Yorumlar yüklenemedi: ${(err as Error).message ?? 'bilinmeyen hata'}`,
+      },
+    };
   }
 }

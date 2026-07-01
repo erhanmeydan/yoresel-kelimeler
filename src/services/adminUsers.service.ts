@@ -14,7 +14,14 @@ export async function listBlockedUsers(db: Firestore): Promise<ServiceResult<Blo
     const snap = await getDocs(q);
     const data = snap.docs.map((d) => d.data() as BlockedUser);
     return { ok: true, data };
-  } catch {
-    return { ok: false, error: { code: 'admin/blocked-list-failed', message: 'Engellenen kullanıcılar yüklenemedi.' } };
+  } catch (err) {
+    console.error('[listBlockedUsers] firestore error:', err);
+    return {
+      ok: false,
+      error: {
+        code: `admin/blocked-list-failed:${(err as { code?: string }).code ?? 'unknown'}`,
+        message: `Engellenen kullanıcılar yüklenemedi: ${(err as Error).message ?? 'bilinmeyen hata'}`,
+      },
+    };
   }
 }

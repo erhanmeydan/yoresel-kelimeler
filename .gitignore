@@ -42,3 +42,8 @@ functions/node_modules/
 # Service account credentials (NEVER commit)
 service-account.json
 *-firebase-adminsdk-*.json
+
+# Test artifacts
+screenshots/
+scripts/.test-admin.json
+scripts/.auth-cache.json

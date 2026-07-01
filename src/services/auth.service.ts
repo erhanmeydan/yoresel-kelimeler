@@ -123,6 +123,32 @@ export function observeAuth(auth: Auth, callback: (user: User | null) => void): 
   return onAuthStateChanged(auth, callback);
 }
 
+/**
+ * Resolves with the current Firebase Auth user AFTER auth state is fully
+ * restored. Because the app calls `setPersistence(browserLocalPersistence)`
+ * (src/config/firebase.ts), `auth.currentUser` is `null` on a fresh page
+ * load until the SDK finishes restoring the persisted session. Reading
+ * `auth.currentUser` synchronously inside a page renderer therefore races
+ * the restore and almost always captures `null`, even for signed-in users.
+ *
+ * `onAuthStateChanged` fires immediately upon subscription with the
+ * current (or restored) user, so awaiting one callback gives us a value
+ * we can trust. If `auth.currentUser` is already set (warm navigation
+ * inside the SPA), we resolve synchronously without subscribing.
+ */
+export function ensureAuthReady(auth: Auth): Promise<User | null> {
+  return new Promise((resolve) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(user);
+    });
+  });
+}
+
 export async function getProfile(db: Firestore, uid: string): Promise<ServiceResult<UserProfile | null>> {
   try {
     const snap = await getDoc(doc(db, COLLECTIONS.USERS, uid));

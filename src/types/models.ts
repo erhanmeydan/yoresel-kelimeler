@@ -5,6 +5,7 @@ export type EntryType = 'kelime' | 'deyim' | 'atasözü';
 export type EntryStatus = 'active' | 'removed';
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
 export type ModerationAction = 'remove' | 'restore' | 'edit';
+export type CommentStatus = 'active' | 'removed';
 
 export interface Region {
   id: string;
@@ -83,6 +84,7 @@ export interface Comment {
   authorId: string;
   authorName: string;
   text: string;
+  status?: CommentStatus;
   createdAt: Timestamp;
 }
 

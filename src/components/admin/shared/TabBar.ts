@@ -1,4 +1,4 @@
-export type AdminTab = 'reports' | 'comments' | 'users' | 'stats';
+export type AdminTab = 'reports' | 'comments' | 'entries' | 'users' | 'stats';
 
 export function renderTabBar(
   container: HTMLElement,
@@ -12,6 +12,7 @@ export function renderTabBar(
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'reports', label: 'Raporlar' },
     { id: 'comments', label: 'Yorumlar' },
+    { id: 'entries', label: 'Maddeler' },
     { id: 'users', label: 'Kullanıcılar' },
     { id: 'stats', label: 'İstatistikler' },
   ];

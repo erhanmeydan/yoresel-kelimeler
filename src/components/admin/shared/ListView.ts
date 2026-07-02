@@ -36,10 +36,72 @@ export async function renderListView<T extends { id: string }>(
   container: HTMLElement,
   config: ListViewConfig<T>,
 ): Promise<void> {
-  // Show loading
   container.innerHTML = '<p class="list-view__loading">Yükleniyor...</p>';
 
-  const result = await config.fetch({});
+  const filterValues: Record<string, string> = {};
+  for (const f of config.filters) {
+    if (f.type === 'select' && f.options?.[0]) filterValues[f.key] = f.options[0].value;
+  }
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Render filter bar
+  const filterBar = document.createElement('div');
+  filterBar.className = 'list-view__filter-bar';
+  for (const filter of config.filters) {
+    const wrap = document.createElement('div');
+    wrap.className = 'list-view__filter';
+    const label = document.createElement('label');
+    label.textContent = filter.label;
+    label.className = 'list-view__filter-label';
+    wrap.append(label);
+    if (filter.type === 'text') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = filter.label;
+      input.value = filterValues[filter.key] ?? '';
+      input.addEventListener('input', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          filterValues[filter.key] = input.value;
+          void renderRows(tableContainer, config, filterValues);
+        }, 300);
+      });
+      wrap.append(input);
+    } else if (filter.type === 'select' && filter.options) {
+      const select = document.createElement('select');
+      for (const opt of filter.options) {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        select.append(option);
+      }
+      select.value = filterValues[filter.key] ?? filter.options[0].value;
+      select.addEventListener('change', () => {
+        filterValues[filter.key] = select.value;
+        void renderRows(tableContainer, config, filterValues);
+      });
+      wrap.append(select);
+    }
+    filterBar.append(wrap);
+  }
+
+  container.innerHTML = '';
+  container.append(filterBar);
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'list-view__table-container';
+  container.append(tableContainer);
+
+  await renderRows(tableContainer, config, filterValues);
+}
+
+async function renderRows<T extends { id: string }>(
+  container: HTMLElement,
+  config: ListViewConfig<T>,
+  filterValues: Record<string, string>,
+): Promise<void> {
+  container.innerHTML = '<p class="list-view__loading">Yükleniyor...</p>';
+  const result = await config.fetch(filterValues);
   container.innerHTML = '';
 
   const table = document.createElement('table');

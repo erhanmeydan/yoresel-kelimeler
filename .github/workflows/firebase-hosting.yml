@@ -29,6 +29,16 @@ jobs:
       - name: Build
         run: npm run build:web
 
+      - name: Install functions dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: functions
+        run: npm ci --legacy-peer-deps
+
+      - name: Build functions
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: functions
+        run: npm run build
+
       - name: Comment PR with preview URL
         # Fork PR'larında GITHUB_TOKEN read-only → 403. Build yine de çalışır,
         # preview URL'i PR'a manuel yorum olarak eklenebilir veya trusted mirror

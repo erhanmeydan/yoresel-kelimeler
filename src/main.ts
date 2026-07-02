@@ -1,4 +1,5 @@
 import './styles/main.css';
+import 'leaflet/dist/leaflet.css';
 import { renderHeader } from './components/Header';
 import { renderFooter } from './components/Footer';
 import { renderHomePage } from './pages/HomePage';

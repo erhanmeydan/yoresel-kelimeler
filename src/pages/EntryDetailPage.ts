@@ -1,5 +1,5 @@
 import { auth, db } from '../config/firebase';
-import { getEntryBySlug, incrementLike, deleteOwnEntry } from '../services/entries.service';
+import { getEntryBySlug, likeEntry, unlikeEntry, hasLiked, deleteOwnEntry } from '../services/entries.service';
 import { listRegions } from '../services/regions.service';
 import { addComment, listComments } from '../services/comments.service';
 import { showAuthDrawer } from '../components/AuthDrawer';
@@ -135,29 +135,50 @@ export async function renderEntryDetailPage(
   likeBtn.className = 'btn-like';
   likeBtn.type = 'button';
   let currentLikes = entry.likeCount;
+  let liked = false;
   const renderLike = (): void => {
+    likeBtn.classList.toggle('liked', liked);
+    likeBtn.setAttribute('aria-pressed', String(liked));
     likeBtn.innerHTML = `<span class="like-heart">♥</span> <span class="like-count">${currentLikes}</span>`;
   };
   renderLike();
-  let liked = false;
+  // Reflect the signed-in user's existing like (if any) on load.
+  const likeUser = auth.currentUser;
+  if (likeUser) {
+    void hasLiked(db, entryId, likeUser.uid).then((alreadyLiked) => {
+      if (alreadyLiked) { liked = true; renderLike(); }
+    });
+  }
   likeBtn.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) {
       showAuthDrawer('login');
       return;
     }
-    if (liked) return; // MVP: sadece +1
-    liked = true;
-    currentLikes += 1;
-    renderLike();
     likeBtn.disabled = true;
-    const result = await incrementLike(db, entryId, 1);
-    if (!result.ok) {
-      currentLikes -= 1;
-      renderLike();
+    if (liked) {
+      // Optimistic unlike; likeCount on the entry settles via Cloud Function.
       liked = false;
-      likeBtn.disabled = false;
+      currentLikes = Math.max(0, currentLikes - 1);
+      renderLike();
+      const result = await unlikeEntry(db, entryId, user.uid);
+      if (!result.ok) {
+        liked = true;
+        currentLikes += 1;
+        renderLike();
+      }
+    } else {
+      liked = true;
+      currentLikes += 1;
+      renderLike();
+      const result = await likeEntry(db, entryId, user.uid);
+      if (!result.ok) {
+        liked = false;
+        currentLikes = Math.max(0, currentLikes - 1);
+        renderLike();
+      }
     }
+    likeBtn.disabled = false;
   });
   actions.appendChild(likeBtn);
 

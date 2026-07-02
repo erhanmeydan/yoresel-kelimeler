@@ -28,6 +28,7 @@ type Page =
   | { kind: 'home' }
   | { kind: 'contribute'; editId?: string }
   | { kind: 'profile' }
+  | { kind: 'moderation' }
   | { kind: 'entry'; slug: string };
 
 function parseRoute(): Page {
@@ -40,6 +41,7 @@ function parseRoute(): Page {
       : { kind: 'contribute' };
   }
   if (head === 'profile') return { kind: 'profile' };
+  if (head === 'moderation') return { kind: 'moderation' };
   if (head === 'entry' && rest[0]) return { kind: 'entry', slug: rest[0] };
   return { kind: 'home' };
 }
@@ -85,6 +87,10 @@ async function render(): Promise<void> {
   else if (page.kind === 'contribute') {
     const { renderContributePage } = await import('./pages/ContributePage');
     await renderContributePage(slot, page.editId);
+  }
+  else if (page.kind === 'moderation') {
+    const { renderModerationPage } = await import('./pages/ModerationPage');
+    await renderModerationPage(slot);
   }
   else if (page.kind === 'profile') {
     const { renderProfilePage } = await import('./pages/ProfilePage');

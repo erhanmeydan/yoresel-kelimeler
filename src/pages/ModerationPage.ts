@@ -78,11 +78,16 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
     }
   };
 
+  // Stable handler: re-render TabBar with THIS same callback so subsequent
+  // tab clicks keep working. The previous version used `() => {}` on
+  // re-render, which silently broke tab switching after the first change.
+  const handleTabChange = (tab: AdminTab): void => {
+    setTabInUrl(tab);
+    renderTabBar(tabBarContainer, tab, handleTabChange);
+    void loadTab(tab);
+  };
   const initialTab = getTabFromUrl();
-  renderTabBar(tabBarContainer, initialTab, async (tab) => {
-    renderTabBar(tabBarContainer, tab, () => {});
-    await loadTab(tab);
-  });
+  renderTabBar(tabBarContainer, initialTab, handleTabChange);
 
   // Listen for in-page cross-tab navigation requests (e.g. the "Raporları Gör"
   // button on the Stats tab). Keep this in sync with the URL so refresh and
@@ -91,8 +96,7 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
     const detail = (event as CustomEvent<{ tab?: AdminTab }>).detail;
     const next = detail?.tab;
     if (!next || !['reports', 'comments', 'entries', 'users', 'stats'].includes(next)) return;
-    renderTabBar(tabBarContainer, next, () => {});
-    void loadTab(next);
+    handleTabChange(next);
   };
   if (activeSwitchTabListener) {
     window.removeEventListener(MODERATION_SWITCH_TAB_EVENT, activeSwitchTabListener);

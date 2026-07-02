@@ -43,11 +43,11 @@ describe('EntriesTab', () => {
     expect(options).toEqual(['Hepsi', 'Aktif', 'Silinmiş']);
   });
 
-  it('renders the regionId text filter', async () => {
+  it('renders the search text filter', async () => {
     await renderEntriesTab(document.getElementById('root')!);
     const input = document.querySelector<HTMLInputElement>('.list-view__filter input');
     expect(input).toBeTruthy();
-    expect(input?.placeholder).toBe('İl kodu');
+    expect(input?.placeholder).toBe('Kelime / İl');
   });
 
   it('shows empty state when listEntries returns no items', async () => {

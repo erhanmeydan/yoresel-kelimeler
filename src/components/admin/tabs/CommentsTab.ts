@@ -43,11 +43,9 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
       },
       { key: 'q', label: 'Ara', type: 'text' },
     ],
-    // NOTE: `q` (text search) is accepted by the filter bar but NOT yet
-    // forwarded to listAllComments — the service does not support text search.
-    // Wiring it would require either a Firestore `array-contains-any` query
-    // over searchTokens or a separate Algolia/Meilisearch index. Tracked as
-    // Phase 4 follow-up.
+    // Client-side text search: filter on `text` and `authorName`.
+    // Service stays simple (status filter only); search filter is applied
+    // in-memory after the Firestore fetch. Best-effort for moderate dataset.
     fetch: async (filterValues) => {
       const rawStatus = filterValues.status;
       const status: 'active' | 'removed' | undefined =
@@ -55,7 +53,15 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
       const r = await listAllComments(db, status ? { status } : {});
       if (!r.ok) return { ok: false, error: r.error };
       if (!r.data) return { ok: false, error: { code: 'admin/no-data', message: 'Veri yok.' } };
-      return { ok: true, data: r.data };
+      let items = r.data.items;
+      const q = filterValues.q?.trim().toLowerCase();
+      if (q) {
+        items = items.filter((c) =>
+          c.text.toLowerCase().includes(q) ||
+          c.authorName.toLowerCase().includes(q)
+        );
+      }
+      return { ok: true, data: { items, hasMore: false } };
     },
     emptyMessage: 'Hiç yorum yok.',
   };

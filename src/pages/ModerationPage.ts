@@ -3,8 +3,24 @@ import { ensureAuthReady, getProfile } from '../services/auth.service';
 import { renderTabBar, type AdminTab } from '../components/admin/shared/TabBar';
 import { renderReportsTab } from '../components/admin/tabs/ReportsTab';
 import { renderCommentsTab } from '../components/admin/tabs/CommentsTab';
+import { renderEntriesTab } from '../components/admin/tabs/EntriesTab';
 import { renderUsersTab } from '../components/admin/tabs/UsersTab';
-import { renderStatsTab } from '../components/admin/StatsTab';
+import { renderStatsTab } from '../components/admin/tabs/StatsTab';
+
+function getTabFromUrl(): AdminTab {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (['reports', 'comments', 'entries', 'users', 'stats'].includes(tab ?? '')) {
+    return tab as AdminTab;
+  }
+  return 'reports';
+}
+
+function setTabInUrl(tab: AdminTab): void {
+  const params = new URLSearchParams(window.location.search);
+  params.set('tab', tab);
+  window.history.replaceState({}, '', `?${params.toString()}`);
+}
 
 export async function renderModerationPage(container: HTMLElement): Promise<void> {
   // CRITICAL: wait for Firebase Auth to finish restoring the persisted
@@ -36,6 +52,7 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
   const contentContainer = container.querySelector<HTMLDivElement>('#tab-content')!;
 
   const loadTab = async (tab: AdminTab): Promise<void> => {
+    setTabInUrl(tab);
     contentContainer.innerHTML = '';
     contentContainer.setAttribute('role', 'tabpanel');
     switch (tab) {
@@ -44,6 +61,9 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
         break;
       case 'comments':
         await renderCommentsTab(contentContainer);
+        break;
+      case 'entries':
+        await renderEntriesTab(contentContainer);
         break;
       case 'users':
         await renderUsersTab(contentContainer);
@@ -54,10 +74,11 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
     }
   };
 
-  renderTabBar(tabBarContainer, 'reports', async (tab) => {
+  const initialTab = getTabFromUrl();
+  renderTabBar(tabBarContainer, initialTab, async (tab) => {
     renderTabBar(tabBarContainer, tab, () => {});
     await loadTab(tab);
   });
 
-  await loadTab('reports');
+  await loadTab(initialTab);
 }

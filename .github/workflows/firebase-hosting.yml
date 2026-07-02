@@ -71,4 +71,4 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npx -y firebase-tools@latest deploy --only hosting,functions --project yoresel-kelimeler
+          npx -y firebase-tools@latest deploy --only hosting,functions --force --project yoresel-kelimeler

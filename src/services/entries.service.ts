@@ -1,6 +1,6 @@
 import {
   collection, query, where, orderBy, limit, getDocs, getDoc,
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment,
+  addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp,
   type Firestore, type DocumentData,
 } from 'firebase/firestore';
 import { COLLECTIONS } from '../config/constants';
@@ -168,12 +168,32 @@ export async function deleteOwnEntry(db: Firestore, entryId: string): Promise<Se
   }
 }
 
-export async function incrementLike(db: Firestore, entryId: string, delta: 1 | -1): Promise<ServiceResult<null>> {
+// Per-user like model (#9): the client writes only its own likes/{uid} doc.
+// likeCount on the entry is maintained server-side by the onLike* Cloud Functions.
+export async function likeEntry(db: Firestore, entryId: string, uid: string): Promise<ServiceResult<null>> {
   try {
-    await updateDoc(doc(db, COLLECTIONS.ENTRIES, entryId), { likeCount: increment(delta) });
+    await setDoc(doc(db, COLLECTIONS.ENTRIES, entryId, 'likes', uid), { createdAt: serverTimestamp() });
     return { ok: true, data: null };
   } catch {
     return { ok: false, error: { code: 'entries/like-failed', message: 'Beğeni işlemi başarısız.' } };
+  }
+}
+
+export async function unlikeEntry(db: Firestore, entryId: string, uid: string): Promise<ServiceResult<null>> {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.ENTRIES, entryId, 'likes', uid));
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: { code: 'entries/unlike-failed', message: 'Beğeni geri alınamadı.' } };
+  }
+}
+
+export async function hasLiked(db: Firestore, entryId: string, uid: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, COLLECTIONS.ENTRIES, entryId, 'likes', uid));
+    return snap.exists();
+  } catch {
+    return false;
   }
 }
 

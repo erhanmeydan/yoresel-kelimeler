@@ -278,3 +278,10 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-focus);
 }
+
+.list-view__pagination {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+}

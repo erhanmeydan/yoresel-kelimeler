@@ -44,6 +44,7 @@ export async function renderListView<T extends { id: string }>(
   }
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let currentCursor: unknown = undefined;
 
   // Render filter bar
   const filterBar = document.createElement('div');
@@ -64,7 +65,8 @@ export async function renderListView<T extends { id: string }>(
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           filterValues[filter.key] = input.value;
-          void renderRows(tableContainer, config, filterValues);
+          currentCursor = undefined; // reset on filter change
+          void renderRows({ ...filterValues }, undefined, false);
         }, 300);
       });
       wrap.append(input);
@@ -79,7 +81,8 @@ export async function renderListView<T extends { id: string }>(
       select.value = filterValues[filter.key] ?? filter.options[0].value;
       select.addEventListener('change', () => {
         filterValues[filter.key] = select.value;
-        void renderRows(tableContainer, config, filterValues);
+        currentCursor = undefined; // reset on filter change
+        void renderRows({ ...filterValues }, undefined, false);
       });
       wrap.append(select);
     }
@@ -92,76 +95,106 @@ export async function renderListView<T extends { id: string }>(
   tableContainer.className = 'list-view__table-container';
   container.append(tableContainer);
 
-  await renderRows(tableContainer, config, filterValues);
-}
+  await renderRows({ ...filterValues }, undefined, false);
 
-async function renderRows<T extends { id: string }>(
-  container: HTMLElement,
-  config: ListViewConfig<T>,
-  filterValues: Record<string, string>,
-): Promise<void> {
-  container.innerHTML = '<p class="list-view__loading">Yükleniyor...</p>';
-  const result = await config.fetch(filterValues);
-  container.innerHTML = '';
+  async function renderRows(
+    filterVals: Record<string, string>,
+    cursor: unknown,
+    append: boolean,
+  ): Promise<void> {
+    if (!append) {
+      tableContainer.innerHTML = '<p class="list-view__loading">Yükleniyor...</p>';
+    } else {
+      // Remove old pagination during load
+      tableContainer.querySelector('.list-view__pagination')?.remove();
+    }
+    const result = await config.fetch(filterVals, cursor);
 
-  const table = document.createElement('table');
-  table.className = 'list-view';
-  table.setAttribute('role', 'grid');
+    if (!append) {
+      tableContainer.innerHTML = '';
+      const table = document.createElement('table');
+      table.className = 'list-view';
+      table.setAttribute('role', 'grid');
 
-  // Header
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  headerRow.className = 'list-view__header';
-  for (const col of config.columns) {
-    const th = document.createElement('th');
-    th.textContent = col.label;
-    if (col.width) th.style.width = col.width;
-    headerRow.append(th);
-  }
-  if (config.actions.length > 0) {
-    const th = document.createElement('th');
-    th.textContent = 'Aksiyon';
-    headerRow.append(th);
-  }
-  thead.append(headerRow);
-  table.append(thead);
-
-  // Body
-  const tbody = document.createElement('tbody');
-  if (!result.ok || !result.data || result.data.items.length === 0) {
-    const empty = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = config.columns.length + (config.actions.length > 0 ? 1 : 0);
-    td.className = 'list-view__empty';
-    td.textContent = result.error?.message ?? config.emptyMessage;
-    empty.append(td);
-    tbody.append(empty);
-  } else {
-    for (const item of result.data.items) {
-      const row = document.createElement('tr');
-      row.className = 'list-view__row';
-      row.setAttribute('data-id', item.id);
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headerRow.className = 'list-view__header';
       for (const col of config.columns) {
-        const td = document.createElement('td');
-        const rendered = col.render(item);
-        td.append(typeof rendered === 'string' ? document.createTextNode(rendered) : rendered);
-        row.append(td);
+        const th = document.createElement('th');
+        th.textContent = col.label;
+        if (col.width) th.style.width = col.width;
+        headerRow.append(th);
       }
       if (config.actions.length > 0) {
-        const actionTd = document.createElement('td');
-        for (const action of config.actions) {
-          if (action.isVisible && !action.isVisible(item)) continue;
-          const btn = document.createElement('button');
-          btn.className = `btn btn-sm btn-${action.variant ?? 'secondary'}`;
-          btn.textContent = action.label;
-          btn.addEventListener('click', () => void action.onClick(item));
-          actionTd.append(btn);
-        }
-        row.append(actionTd);
+        const th = document.createElement('th');
+        th.textContent = 'Aksiyon';
+        headerRow.append(th);
       }
-      tbody.append(row);
+      thead.append(headerRow);
+      table.append(thead);
+
+      const tbody = document.createElement('tbody');
+      table.append(tbody);
+      tableContainer.append(table);
+    }
+
+    const tbody = tableContainer.querySelector('tbody');
+
+    if (!result.ok || !result.data || result.data.items.length === 0) {
+      if (!append && tbody) {
+        const empty = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = config.columns.length + (config.actions.length > 0 ? 1 : 0);
+        td.className = 'list-view__empty';
+        td.textContent = result.error?.message ?? config.emptyMessage;
+        empty.append(td);
+        tbody.append(empty);
+      }
+    } else if (tbody) {
+      for (const item of result.data.items) {
+        const row = document.createElement('tr');
+        row.className = 'list-view__row';
+        row.setAttribute('data-id', item.id);
+        for (const col of config.columns) {
+          const td = document.createElement('td');
+          const rendered = col.render(item);
+          td.append(typeof rendered === 'string' ? document.createTextNode(rendered) : rendered);
+          row.append(td);
+        }
+        if (config.actions.length > 0) {
+          const actionTd = document.createElement('td');
+          for (const action of config.actions) {
+            if (action.isVisible && !action.isVisible(item)) continue;
+            const btn = document.createElement('button');
+            btn.className = `btn btn-sm btn-${action.variant ?? 'secondary'}`;
+            btn.textContent = action.label;
+            btn.addEventListener('click', () => void action.onClick(item));
+            actionTd.append(btn);
+          }
+          row.append(actionTd);
+        }
+        tbody.append(row);
+      }
+    }
+
+    // Add pagination if more results available
+    if (result.data?.hasMore && result.data.lastVisible !== undefined) {
+      const pagination = document.createElement('div');
+      pagination.className = 'list-view__pagination';
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-secondary list-view__pagination-next';
+      nextBtn.textContent = 'Sonraki →';
+      const lastVis = result.data.lastVisible;
+      const filterSnapshot = { ...filterVals };
+      nextBtn.addEventListener('click', () => {
+        void renderRows(filterSnapshot, lastVis, true);
+      });
+      pagination.append(nextBtn);
+      tableContainer.append(pagination);
+    }
+
+    if (append) {
+      currentCursor = result.data?.lastVisible ?? cursor;
     }
   }
-  table.append(tbody);
-  container.append(table);
 }

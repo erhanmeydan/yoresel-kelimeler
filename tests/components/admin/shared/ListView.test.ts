@@ -80,6 +80,30 @@ describe('ListView', () => {
     expect(fetch.mock.calls[1][0]).toEqual({ q: 'foo' });
   });
 
+  it('shows pagination when hasMore=true', async () => {
+    const config: ListViewConfig<Item> = {
+      columns: [{ key: 'name', label: 'İsim', render: i => i.name }],
+      actions: [],
+      filters: [],
+      fetch: async () => ({ ok: true, data: { items: [{ id: '1', name: 'a' }], hasMore: true, lastVisible: 'cursor1' } }),
+      emptyMessage: 'Boş',
+    };
+    await renderListView(document.getElementById('root')!, config);
+    expect(document.querySelector('.list-view__pagination-next')).toBeTruthy();
+  });
+
+  it('hides pagination when hasMore=false', async () => {
+    const config: ListViewConfig<Item> = {
+      columns: [{ key: 'name', label: 'İsim', render: i => i.name }],
+      actions: [],
+      filters: [],
+      fetch: async () => ({ ok: true, data: { items: [], hasMore: false } }),
+      emptyMessage: 'Boş',
+    };
+    await renderListView(document.getElementById('root')!, config);
+    expect(document.querySelector('.list-view__pagination-next')).toBeFalsy();
+  });
+
   it('renders select filter with options', async () => {
     const config: ListViewConfig<Item> = {
       columns: [{ key: 'name', label: 'İsim', render: i => i.name }],

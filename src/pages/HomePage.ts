@@ -325,8 +325,8 @@ function renderTopRegionRow(
   bar.setAttribute('aria-hidden', 'true');
   const barFill = document.createElement('div');
   barFill.className = 'top-region-bar-fill';
-  const pct = maxCount > 0 ? (stat.entryCount / maxCount) * 100 : 0;
-  barFill.style.width = `${pct}%`;
+  const pct = maxCount > 0 ? (stat.entryCount / maxCount) : 0;
+  barFill.style.setProperty('--progress', String(pct));
   bar.appendChild(barFill);
 
   const count = document.createElement('span');

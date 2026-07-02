@@ -44,13 +44,13 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
       { key: 'q', label: 'Ara', type: 'text' },
     ],
     // Client-side text search: filter on `text` and `authorName`.
-    // Service stays simple (status filter only); search filter is applied
-    // in-memory after the Firestore fetch. Best-effort for moderate dataset.
+    // pageSize=200 covers most admin datasets; pagination disabled during
+    // search (cursor model doesn't compose with client-side filter).
     fetch: async (filterValues) => {
       const rawStatus = filterValues.status;
       const status: 'active' | 'removed' | undefined =
         !rawStatus || rawStatus === 'all' ? undefined : (rawStatus as 'active' | 'removed');
-      const r = await listAllComments(db, status ? { status } : {});
+      const r = await listAllComments(db, status ? { status } : {}, 200);
       if (!r.ok) return { ok: false, error: r.error };
       if (!r.data) return { ok: false, error: { code: 'admin/no-data', message: 'Veri yok.' } };
       let items = r.data.items;
@@ -60,8 +60,9 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
           c.text.toLowerCase().includes(q) ||
           c.authorName.toLowerCase().includes(q)
         );
+        return { ok: true, data: { items, hasMore: false } };
       }
-      return { ok: true, data: { items, hasMore: false } };
+      return { ok: true, data: { items, hasMore: r.data.hasMore, lastVisible: r.data.lastVisible } };
     },
     emptyMessage: 'Hiç yorum yok.',
   };

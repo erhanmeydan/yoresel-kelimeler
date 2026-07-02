@@ -5,7 +5,7 @@ import { renderReportsTab } from '../components/admin/tabs/ReportsTab';
 import { renderCommentsTab } from '../components/admin/tabs/CommentsTab';
 import { renderEntriesTab } from '../components/admin/tabs/EntriesTab';
 import { renderUsersTab } from '../components/admin/tabs/UsersTab';
-import { renderStatsTab } from '../components/admin/tabs/StatsTab';
+import { renderStatsTab, MODERATION_SWITCH_TAB_EVENT } from '../components/admin/tabs/StatsTab';
 
 function getTabFromUrl(): AdminTab {
   const params = new URLSearchParams(window.location.search);
@@ -21,6 +21,10 @@ function setTabInUrl(tab: AdminTab): void {
   params.set('tab', tab);
   window.history.replaceState({}, '', `?${params.toString()}`);
 }
+
+// Single global listener — the moderation page can be re-rendered in tests
+// and we don't want stale listeners to fire duplicate tab-switches.
+let activeSwitchTabListener: ((event: Event) => void) | null = null;
 
 export async function renderModerationPage(container: HTMLElement): Promise<void> {
   // CRITICAL: wait for Firebase Auth to finish restoring the persisted
@@ -79,6 +83,22 @@ export async function renderModerationPage(container: HTMLElement): Promise<void
     renderTabBar(tabBarContainer, tab, () => {});
     await loadTab(tab);
   });
+
+  // Listen for in-page cross-tab navigation requests (e.g. the "Raporları Gör"
+  // button on the Stats tab). Keep this in sync with the URL so refresh and
+  // back/forward still work after the switch.
+  const onSwitchTab = (event: Event): void => {
+    const detail = (event as CustomEvent<{ tab?: AdminTab }>).detail;
+    const next = detail?.tab;
+    if (!next || !['reports', 'comments', 'entries', 'users', 'stats'].includes(next)) return;
+    renderTabBar(tabBarContainer, next, () => {});
+    void loadTab(next);
+  };
+  if (activeSwitchTabListener) {
+    window.removeEventListener(MODERATION_SWITCH_TAB_EVENT, activeSwitchTabListener);
+  }
+  window.addEventListener(MODERATION_SWITCH_TAB_EVENT, onSwitchTab);
+  activeSwitchTabListener = onSwitchTab;
 
   await loadTab(initialTab);
 }

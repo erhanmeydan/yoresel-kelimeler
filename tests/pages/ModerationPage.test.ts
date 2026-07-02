@@ -23,6 +23,7 @@ vi.mock('../../src/components/admin/tabs/UsersTab', () => ({
 }));
 vi.mock('../../src/components/admin/tabs/StatsTab', () => ({
   renderStatsTab: vi.fn(),
+  MODERATION_SWITCH_TAB_EVENT: 'moderation:switch-tab',
 }));
 
 function resetUrl(search = ''): void {
@@ -62,5 +63,35 @@ describe('ModerationPage', () => {
     usersTab.click();
     await new Promise(r => setTimeout(r, 50));
     expect(window.location.search).toContain('tab=users');
+  });
+
+  it('switches tab and renders when moderation:switch-tab event is dispatched', async () => {
+    resetUrl('?tab=stats');
+    const { renderModerationPage } = await import('../../src/pages/ModerationPage');
+    const { renderReportsTab } = await import('../../src/components/admin/tabs/ReportsTab');
+    await renderModerationPage(document.getElementById('root')!);
+    vi.mocked(renderReportsTab).mockClear();
+
+    window.dispatchEvent(new CustomEvent('moderation:switch-tab', { detail: { tab: 'reports' } }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(renderReportsTab).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toContain('tab=reports');
+    const activeTab = document.querySelector('.tab-btn.active');
+    expect(activeTab?.textContent).toContain('Raporlar');
+  });
+
+  it('ignores moderation:switch-tab events with unknown tab names', async () => {
+    resetUrl('?tab=stats');
+    const { renderModerationPage } = await import('../../src/pages/ModerationPage');
+    const { renderReportsTab } = await import('../../src/components/admin/tabs/ReportsTab');
+    await renderModerationPage(document.getElementById('root')!);
+    vi.mocked(renderReportsTab).mockClear();
+
+    window.dispatchEvent(new CustomEvent('moderation:switch-tab', { detail: { tab: 'banana' } }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(renderReportsTab).not.toHaveBeenCalled();
+    expect(window.location.search).toContain('tab=stats');
   });
 });

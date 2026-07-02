@@ -1,7 +1,7 @@
-# Admin Moderation Panel — Tasarım Spec
+# Admin Moderation Panel — Tasarım Spec (SUPERSEDED)
 
 **Tarih:** 2026-07-01
-**Durum:** Onaylandı (kullanıcı onayı alındı, 3 section tamam)
+**Durum:** ⚠️ **Bu spec superseded. Bakınız:** [`2026-07-02-admin-panel-design.md`](./2026-07-02-admin-panel-design.md)
 **Kapsam:** v1 — Yorum silme + Kullanıcı engelleme + Basit dashboard. v2 — Audit log + Bulk actions (bu spec dışı)
 **Bağlı spec:** `2026-06-28-yoresel-kelimeler-design.md`
 

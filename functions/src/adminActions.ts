@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions';
 
 export const moderateEntry = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Giriş gerekli.');
@@ -22,38 +23,48 @@ export const moderateEntry = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'Geçersiz sebep.');
   }
 
-  return db.runTransaction(async (tx) => {
-    const entryRef = db.doc(`entries/${entryId}`);
-    const entrySnap = await tx.get(entryRef);
-    if (!entrySnap.exists) throw new HttpsError('not-found', 'Kayıt yok.');
+  try {
+    return await db.runTransaction(async (tx) => {
+      const entryRef = db.doc(`entries/${entryId}`);
+      const entrySnap = await tx.get(entryRef);
+      if (!entrySnap.exists) throw new HttpsError('not-found', 'Kayıt yok.');
 
-    const prevValue = entrySnap.data();
-    const updates: Record<string, unknown> = {};
+      const prevValue = entrySnap.data();
+      const updates: Record<string, unknown> = {};
 
-    if (action === 'remove') {
-      updates.status = 'removed';
-      updates.removedReason = reason;
-      updates.removedBy = request.auth!.uid;
-      updates.removedAt = new Date();
-    } else if (action === 'restore') {
-      updates.status = 'active';
-      updates.removedReason = null;
-      updates.removedBy = null;
-      updates.removedAt = null;
-    } else {
-      throw new HttpsError('invalid-argument', 'Geçersiz aksiyon.');
-    }
+      if (action === 'remove') {
+        updates.status = 'removed';
+        updates.removedReason = reason;
+        updates.removedBy = request.auth!.uid;
+        updates.removedAt = new Date();
+      } else if (action === 'restore') {
+        updates.status = 'active';
+        updates.removedReason = null;
+        updates.removedBy = null;
+        updates.removedAt = null;
+      } else {
+        throw new HttpsError('invalid-argument', 'Geçersiz aksiyon.');
+      }
 
-    tx.update(entryRef, updates);
-    tx.create(db.collection('moderationLog').doc(), {
-      entryId,
-      moderatorId: request.auth!.uid,
-      action,
-      reason,
-      prevValue,
-      createdAt: new Date(),
+      tx.update(entryRef, updates);
+      tx.create(db.collection('moderationLog').doc(), {
+        entryId,
+        moderatorId: request.auth!.uid,
+        action,
+        reason,
+        prevValue,
+        createdAt: new Date(),
+      });
+
+      return true;
     });
-
-    return true;
-  });
+  } catch (err) {
+    logger.error('moderateEntry failed', {
+      err: err instanceof Error ? { message: err.message, stack: err.stack, name: err.name } : err,
+      entryId,
+      action,
+      moderatorId: request.auth!.uid,
+    });
+    throw err;
+  }
 });

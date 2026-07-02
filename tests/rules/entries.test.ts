@@ -61,6 +61,15 @@ async function seedEntry(id: string, data: Record<string, unknown>): Promise<voi
   });
 }
 
+async function seedModerator(uid: string): Promise<void> {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `users/${uid}`), {
+      uid, displayName: 'Mod', email: `${uid}@x.com`, role: 'moderator',
+      contributionCount: 0, approvedCount: 0, removedCount: 0,
+    });
+  });
+}
+
 describe('entries rules', () => {
   it('anon aktif kaydı okuyabilir', async () => {
     await seedEntry('e1', { status: 'active' });
@@ -193,6 +202,61 @@ describe('comments rules', () => {
     await assertFails(setDoc(doc(ctx.firestore(), 'comments/c2'), {
       entryId: 'e1', authorId: 'user1', authorName: 'Site Yöneticisi (SAHTE)',
       text: 'merhaba', createdAt: serverTimestamp(),
+    }));
+  });
+});
+
+describe('comments rules - soft delete', () => {
+  async function seedComment(id: string, data: Record<string, unknown> = {}) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `comments/${id}`), {
+        entryId: 'e1', authorId: 'user1', authorName: 'u',
+        text: 'merhaba', status: 'active', createdAt: new Date(),
+        ...data,
+      });
+    });
+  }
+
+  it('moderator status removed yapabilir', async () => {
+    await seedComment('cm1');
+    await seedModerator('mod1');
+    const ctx = env.authenticatedContext('mod1');
+    await assertSucceeds(updateDoc(doc(ctx.firestore(), 'comments/cm1'), { status: 'removed' }));
+  });
+
+  it('normal user status değiştiremez', async () => {
+    await seedComment('cm1');
+    const ctx = env.authenticatedContext('user1');
+    await assertFails(updateDoc(doc(ctx.firestore(), 'comments/cm1'), { status: 'removed' }));
+  });
+
+  it('moderator silebilir (hard delete)', async () => {
+    await seedComment('cm1');
+    await seedModerator('mod1');
+    const ctx = env.authenticatedContext('mod1');
+    await assertSucceeds(deleteDoc(doc(ctx.firestore(), 'comments/cm1')));
+  });
+
+  it('moderator text düzenleyemez, yalnızca status değiştirebilir', async () => {
+    await seedComment('cm1');
+    await seedModerator('mod1');
+    const ctx = env.authenticatedContext('mod1');
+    await assertFails(updateDoc(doc(ctx.firestore(), 'comments/cm1'), { text: 'mod değiştirdi' }));
+  });
+
+  it('status alanı olmadan yorum oluşturulamaz', async () => {
+    const ctx = env.authenticatedContext('user1');
+    await assertFails(setDoc(doc(ctx.firestore(), 'comments/cm_nostat'), {
+      entryId: 'e1', authorId: 'user1', authorName: 'u',
+      text: 'merhaba', createdAt: new Date(),
+    }));
+  });
+
+  it('geçersiz status ile yorum oluşturulamaz', async () => {
+    const ctx = env.authenticatedContext('user1');
+    await assertFails(setDoc(doc(ctx.firestore(), 'comments/cm_badstat'), {
+      entryId: 'e1', authorId: 'user1', authorName: 'u',
+      text: 'merhaba', status: 'weird', createdAt: new Date(),
     }));
   });
 });

@@ -23,6 +23,7 @@ Tüm önemli değişiklikler bu dosyada belgelenir. Format [Keep a Changelog](ht
 - 🖼️ Favicon (Playfair Display "Y" wordmark)
 - 🏆 Top Regions Leaderboard (scheduled + realtime `regionStats`)
 - 🛡️ Moderation backend (Cloud Functions: moderateComment, blockUser, unblockUser, getAdminStats)
+- 🛡️ **Moderation admin panel** (`/moderation`) — 5 sekme (Raporlar, Yorumlar, Maddeler, Kullanıcılar, İstatistikler) ile soft-delete (`status='removed'`) ve restore; generic `ListView` bileşeni (filter + cursor pagination); `ConfirmDialog`; URL state restoration (`?tab=...`); rapor kuyruğu (resolve/dismiss); kullanıcı block/unblock; entry soft-delete + restore; istatistik dashboard'ı (açık rapor sayacı)
 - 🤖 AI destekli geliştirme workflow'u (README + CONTRIBUTING)
 
 ### Technical
@@ -39,6 +40,8 @@ Tüm önemli değişiklikler bu dosyada belgelenir. Format [Keep a Changelog](ht
 - Backfill scripts: searchTokens (100 entries), slugs (101 entries)
 - `updateWeeklyStats` scheduled Cloud Function (her gece 03:00 Istanbul)
 - `onEntryCreate` realtime regionStats increment
+- `restoreComment` callable — yorum soft-delete restore (audit log ile)
+- `restoreEntry` callable — entry soft-delete restore (audit log ile)
 - GitHub Actions CI: hosting preview + live deploy
 - **CI: functions auto-deploy on main push** (#32)
 
@@ -53,6 +56,7 @@ Tüm önemli değişiklikler bu dosyada belgelenir. Format [Keep a Changelog](ht
 - Permission-denied error on slug query (rules required `status` filter)
 - iOS Safari Google sign-in redirect + local persistence
 - Firebase Admin SDK manual initialize (scheduled function crash fix)
+- Hero "Kapsam 7" stat'ı geri yüklendi (#35)
 
 ### Housekeeping
 - **Audit:** Progress bar animates `transform: scaleX()` (compositor thread, no layout thrash)

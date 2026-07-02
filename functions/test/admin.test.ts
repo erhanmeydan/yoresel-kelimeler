@@ -57,7 +57,7 @@ vi.mock('firebase-admin/firestore', () => ({
 }));
 
 // Import SUT AFTER mocks are registered.
-import { restoreComment } from '../src/admin';
+import { restoreComment, restoreEntry } from '../src/admin';
 
 // ---------------------------------------------------------------------------
 // Test harness
@@ -65,6 +65,7 @@ import { restoreComment } from '../src/admin';
 
 const testEnv = firebaseFunctionsTest();
 const wrapped = testEnv.wrap(restoreComment);
+const wrappedEntry = testEnv.wrap(restoreEntry);
 
 function adminAuth(uid: string, displayName: string): CallableRequest['auth'] {
   return {
@@ -194,10 +195,100 @@ describe('restoreComment', () => {
 });
 
 // ---------------------------------------------------------------------------
+// restoreEntry — behavioral tests using firebase-functions-test
+// ---------------------------------------------------------------------------
+
+describe('restoreEntry', () => {
+  beforeEach(() => {
+    mockState.profiles.clear();
+    mockState.updates.length = 0;
+    mockState.auditEntries.length = 0;
+  });
+
+  it('admin status active yapıp removed alanlarını temizler', async () => {
+    // Arrange: admin profile in the (mocked) users collection.
+    mockState.profiles.set('admin-uid', { role: 'admin', displayName: 'Test Admin' });
+
+    // Act: invoke the wrapped callable with admin auth + valid entryId.
+    const result = await wrappedEntry({
+      data: { entryId: 'e1' },
+      auth: adminAuth('admin-uid', 'Test Admin'),
+    } as CallableRequest<{ entryId: string }>);
+
+    // Assert: returns ok:true.
+    expect(result).toEqual({ ok: true });
+
+    // Assert: Firestore update was called on entries/e1 with status: 'active'
+    // and removedReason/removedBy/removedAt cleared to null — proves the
+    // function both flipped the status field and cleared remove metadata.
+    const update = mockState.updates.find(
+      (u) => u.collection === 'entries' && u.id === 'e1',
+    );
+    expect(update).toBeDefined();
+    expect(update!.data).toEqual({
+      status: 'active',
+      removedReason: null,
+      removedBy: null,
+      removedAt: null,
+    });
+
+    // Assert: audit log entry was written with correct shape.
+    expect(mockState.auditEntries).toHaveLength(1);
+    const audit = mockState.auditEntries[0];
+    expect(audit).toMatchObject({
+      action: 'entry.restore',
+      targetType: 'entry',
+      targetId: 'e1',
+      actorUid: 'admin-uid',
+      actorName: 'Test Admin',
+    });
+    expect(audit.createdAt).toBe('SERVER_TIMESTAMP');
+  });
+
+  it('non-admin permission-denied alır', async () => {
+    // Arrange: non-moderator profile — assertIsAdmin must reject.
+    mockState.profiles.set('user-uid', { role: 'user', displayName: 'Test User' });
+
+    // Act + Assert: HttpsError with permission-denied code.
+    await expect(
+      wrappedEntry({
+        data: { entryId: 'e1' },
+        auth: userAuth('user-uid'),
+      } as CallableRequest<{ entryId: string }>),
+    ).rejects.toMatchObject({
+      code: 'permission-denied',
+    });
+
+    // Negative assertions: nothing should have been written.
+    expect(mockState.updates).toHaveLength(0);
+    expect(mockState.auditEntries).toHaveLength(0);
+  });
+
+  it('entryId eksikse invalid-argument', async () => {
+    // Arrange: admin profile so we pass the auth gate and reach the arg check.
+    mockState.profiles.set('admin-uid', { role: 'admin', displayName: 'Test Admin' });
+
+    // Act + Assert: empty data → HttpsError with invalid-argument code.
+    await expect(
+      wrappedEntry({
+        data: {},
+        auth: adminAuth('admin-uid', 'Test Admin'),
+      } as CallableRequest<{ entryId?: string }>),
+    ).rejects.toMatchObject({
+      code: 'invalid-argument',
+    });
+
+    // Negative assertions: no Firestore writes or audit logs.
+    expect(mockState.updates).toHaveLength(0);
+    expect(mockState.auditEntries).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Local stubs for the OTHER 4 callables (used by the shape tests above).
 // We do not import the real callables for those — their tests remain shape
-// tests per the existing convention. Only restoreComment gets behavioral
-// coverage in this file.
+// tests per the existing convention. Only restoreComment and restoreEntry
+// get behavioral coverage in this file.
 // ---------------------------------------------------------------------------
 
 function moderateComment() { return null; }

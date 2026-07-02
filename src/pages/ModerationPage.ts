@@ -2,7 +2,7 @@ import { auth, db } from '../config/firebase';
 import { ensureAuthReady, getProfile } from '../services/auth.service';
 import { renderTabBar, type AdminTab } from '../components/admin/shared/TabBar';
 import { renderReportsTab } from '../components/admin/ReportsTab';
-import { renderCommentsTab } from '../components/admin/CommentsTab';
+import { renderCommentsTab } from '../components/admin/tabs/CommentsTab';
 import { renderUsersTab } from '../components/admin/UsersTab';
 import { renderStatsTab } from '../components/admin/StatsTab';
 

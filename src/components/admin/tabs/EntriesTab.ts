@@ -35,7 +35,11 @@ export async function renderEntriesTab(container: HTMLElement): Promise<void> {
         onClick: async (e) => {
           if (!await confirm({ title: 'Entry silinsin mi?', message: e.word, variant: 'danger' })) return;
           const r = await softDeleteEntry(e.id!, 'admin moderation');
-          if (r.ok) await renderEntriesTab(container);
+          if (r.ok) {
+            await renderEntriesTab(container);
+          } else {
+            alert(`Silinemedi: ${r.error?.message ?? 'bilinmeyen hata'} (${r.error?.code ?? ''})`);
+          }
         },
       },
       {
@@ -44,7 +48,11 @@ export async function renderEntriesTab(container: HTMLElement): Promise<void> {
         onClick: async (e) => {
           if (!await confirm({ title: 'Entry geri alınsın mı?', message: e.word })) return;
           const r = await restoreEntry(e.id!);
-          if (r.ok) await renderEntriesTab(container);
+          if (r.ok) {
+            await renderEntriesTab(container);
+          } else {
+            alert(`Geri alınamadı: ${r.error?.message ?? 'bilinmeyen hata'} (${r.error?.code ?? ''})`);
+          }
         },
       },
     ],

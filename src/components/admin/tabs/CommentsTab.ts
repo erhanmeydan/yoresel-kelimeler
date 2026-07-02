@@ -19,7 +19,11 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
         onClick: async (c) => {
           if (!await confirm({ title: 'Yorumu sil?', message: c.text.slice(0, 100), variant: 'danger' })) return;
           const r = await deleteComment(c.id!);
-          if (r.ok) await renderCommentsTab(container);
+          if (r.ok) {
+            await renderCommentsTab(container);
+          } else {
+            alert(`Silinemedi: ${r.error?.message ?? 'bilinmeyen hata'} (${r.error?.code ?? ''})`);
+          }
         },
       },
       {
@@ -28,7 +32,11 @@ export async function renderCommentsTab(container: HTMLElement): Promise<void> {
         onClick: async (c) => {
           if (!await confirm({ title: 'Yorumu geri al?', message: c.text.slice(0, 100) })) return;
           const r = await restoreComment(c.id!);
-          if (r.ok) await renderCommentsTab(container);
+          if (r.ok) {
+            await renderCommentsTab(container);
+          } else {
+            alert(`Geri alınamadı: ${r.error?.message ?? 'bilinmeyen hata'} (${r.error?.code ?? ''})`);
+          }
         },
       },
     ],

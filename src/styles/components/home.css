@@ -484,8 +484,20 @@
 
 .top-region-bar-fill {
   height: 100%;
+  width: 100%;
   background: var(--color-primary);
-  transition: width 600ms var(--ease-out);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left;
+  animation: barFillIn 600ms var(--ease-out) both;
+}
+
+@keyframes barFillIn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(var(--progress, 0));
+  }
 }
 
 .top-region-count {
@@ -542,6 +554,6 @@
 /* Reduced motion: bar animasyonu devre dışı */
 @media (prefers-reduced-motion: reduce) {
   .top-region-bar-fill {
-    transition: none;
+    animation: none;
   }
 }

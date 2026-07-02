@@ -5,7 +5,16 @@
 .leaflet-container {
   font-family: var(--font-body);
   background: var(--color-surface-2);
+}
+
+/* Hide focus ring on mouse focus; show clear ring on keyboard focus */
+.leaflet-container:focus:not(:focus-visible) {
   outline: none;
+}
+
+.leaflet-container:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
 }
 
 /* Soften the default tile palette */

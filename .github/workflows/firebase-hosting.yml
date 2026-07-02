@@ -29,8 +29,21 @@ jobs:
       - name: Build
         run: npm run build:web
 
+      - name: Install functions dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: functions
+        run: npm ci --legacy-peer-deps
+
+      - name: Build functions
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: functions
+        run: npm run build
+
       - name: Comment PR with preview URL
-        if: github.event_name == 'pull_request'
+        # Fork PR'larında GITHUB_TOKEN read-only → 403. Build yine de çalışır,
+        # preview URL'i PR'a manuel yorum olarak eklenebilir veya trusted mirror
+        # PR ile otomatik gelir.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
         uses: actions/github-script@v7
         env:
           CHANNEL_ID: pr-${{ github.event.pull_request.number }}
@@ -58,4 +71,4 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npx -y firebase-tools@latest deploy --only hosting --project yoresel-kelimeler
+          npx -y firebase-tools@latest deploy --only hosting,functions --force --project yoresel-kelimeler

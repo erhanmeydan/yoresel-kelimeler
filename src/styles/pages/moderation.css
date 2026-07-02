@@ -156,6 +156,13 @@
     padding: var(--space-2) var(--space-3);
     font-size: var(--fs-sm);
   }
+  .list-view {
+    font-size: var(--fs-xs);
+  }
+  .list-view__header th,
+  .list-view__row td {
+    padding: var(--space-2);
+  }
 }
 
 /* Confirm dialog (v2 — alertdialog + focus management) */

@@ -208,8 +208,9 @@ service cloud.firestore {
                      && request.resource.data.text is string
                      && request.resource.data.text.size() > 0
                      && request.resource.data.text.size() <= 500
-                     && noAngleBrackets(request.resource.data.text);
-      // Author may edit only the text (#10); moderators may moderate any comment.
+                     && noAngleBrackets(request.resource.data.text)
+                     && request.resource.data.status in ['active', 'removed'];
+      // Author may edit only the text (#10); moderators may soft-delete (toggle status).
       allow update: if (isSignedIn()
                         && resource.data.authorId == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
@@ -217,7 +218,9 @@ service cloud.firestore {
                         && request.resource.data.text.size() > 0
                         && request.resource.data.text.size() <= 500
                         && noAngleBrackets(request.resource.data.text))
-                     || isModerator();
+                     || (isModerator()
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                         && request.resource.data.status in ['active', 'removed']);
       allow delete: if (isSignedIn() && resource.data.authorId == request.auth.uid)
                      || isModerator();
     }

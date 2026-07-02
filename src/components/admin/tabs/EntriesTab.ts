@@ -60,17 +60,17 @@ export async function renderEntriesTab(container: HTMLElement): Promise<void> {
       { key: 'q', label: 'Kelime / İl', type: 'text' },
     ],
     // Client-side text search across word, meaning, and region name/plate code.
+    // pageSize=200 covers most admin datasets; pagination disabled during search.
     fetch: async (filterValues) => {
       const rawStatus = filterValues.status;
       const status: 'active' | 'removed' | undefined =
         !rawStatus || rawStatus === 'all' ? undefined : (rawStatus as 'active' | 'removed');
-      const r = await listEntries(db, status ? { status } : {});
+      const r = await listEntries(db, status ? { status } : {}, 200);
       if (!r.ok) return { ok: false, error: r.error };
       if (!r.data) return { ok: false, error: { code: 'admin/no-data', message: 'Veri yok.' } };
       let items = r.data.items;
       const q = filterValues.q?.trim().toLowerCase();
       if (q) {
-        // Find regionIds whose name or plate code contains the query
         const matchedRegionIds = new Set<string>();
         for (const [nameOrCode, id] of regionNameToId) {
           if (nameOrCode.includes(q)) matchedRegionIds.add(id);
@@ -80,8 +80,9 @@ export async function renderEntriesTab(container: HTMLElement): Promise<void> {
           e.meaning.toLowerCase().includes(q) ||
           matchedRegionIds.has(e.regionId)
         );
+        return { ok: true, data: { items, hasMore: false } };
       }
-      return { ok: true, data: { items, hasMore: false } };
+      return { ok: true, data: { items, hasMore: r.data.hasMore, lastVisible: r.data.lastVisible } };
     },
     emptyMessage: 'Hiç entry yok.',
   };

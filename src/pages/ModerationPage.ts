@@ -3,7 +3,7 @@ import { ensureAuthReady, getProfile } from '../services/auth.service';
 import { renderTabBar, type AdminTab } from '../components/admin/shared/TabBar';
 import { renderReportsTab } from '../components/admin/ReportsTab';
 import { renderCommentsTab } from '../components/admin/tabs/CommentsTab';
-import { renderUsersTab } from '../components/admin/UsersTab';
+import { renderUsersTab } from '../components/admin/tabs/UsersTab';
 import { renderStatsTab } from '../components/admin/StatsTab';
 
 export async function renderModerationPage(container: HTMLElement): Promise<void> {

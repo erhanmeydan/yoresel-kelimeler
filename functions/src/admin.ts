@@ -87,3 +87,25 @@ export const getAdminStats = onCall({ cors: [/firebasehost\.com$/] }, async (req
   ]);
   return counters;
 });
+
+export const restoreComment = onCall({ cors: [/firebasehost\.com$/] }, async (req) => {
+  const admin = await assertIsAdmin(req);
+  const { commentId } = (req.data ?? {}) as Record<string, unknown>;
+  if (typeof commentId !== 'string') {
+    throw new HttpsError('invalid-argument', 'commentId zorunlu.');
+  }
+
+  await getFirestore().collection('comments').doc(commentId).update({
+    status: 'active',
+  });
+
+  await writeAuditLog({
+    action: 'comment.restore',
+    targetType: 'comment',
+    targetId: commentId,
+    actorUid: admin.uid,
+    actorName: admin.displayName,
+  });
+
+  return { ok: true };
+});
